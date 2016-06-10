@@ -21,5 +21,8 @@ library
   -- other-modules:
   -- other-extensions:
   build-depends:       base >=4.8 && <4.10
+                     , text >= 1.2 && < 1.3
+                     , vector >= 0.11 && < 0.12
+                     , containers
   -- hs-source-dirs:
   default-language:    Haskell2010
