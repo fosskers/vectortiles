@@ -6,10 +6,10 @@
 
 module Data.VectorTile where
 
-import Data.Text (Text)
-import Data.Vector
-import qualified Data.Vector.Unboxed as U
 import qualified Data.Map.Lazy as M
+import           Data.Text (Text)
+import           Data.Vector
+import qualified Data.Vector.Unboxed as U
 
 {- NOTES
 
@@ -28,7 +28,7 @@ data Layer = Layer { version :: Int
                    , points :: Vector (Feature Point)
                    , linestrings :: Vector (Feature LineString)
                    , polygons :: Vector (Feature Polygon)
-                   , keys :: Vector Text
+                   , keys :: Vector Text  -- Needed?
                    , extent :: Int } deriving (Eq,Show)
 
 -- | Points in space. Using "Record Pattern Synonyms" here allows us to treat
@@ -51,10 +51,21 @@ data Polygon = Polygon { points :: U.Vector Point
 newtype Polygon = Polygon { points :: U.Vector Point } deriving (Eq,Show)
 -}
 
+-- | A geographic feature. Features are a set of geometries that share
+-- some common theme:
+--
+-- * Points: schools, gas station locations, etc.
+-- * LineStrings: Roads, power lines, rivers, etc.
+-- * Polygons: Buildings, water bodies, etc.
+--
+-- Where, for instance, all school locations may be stored as a single
+-- `Feature`, and no `Point` within that `Feature` would represent anything
+-- else.
 data Feature g = Feature { featureId :: Int
                          , metadata :: M.Map Text Val
                          , geometries :: Vector g } deriving (Eq,Show)
 
+-- Needs expanding.
 data Val = Str deriving (Eq,Show)
 
 -- | Dummy class and instances to enforce constraints.
