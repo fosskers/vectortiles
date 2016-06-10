@@ -4,12 +4,25 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.VectorTile where
+-- |
+-- Module    : Gaia.VectorTile
+-- Copyright : (c) Colin Woodbury, 2016
+-- License   : Apache 2
+-- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
+--
+-- GIS Vector Tiles, as defined by Mapbox.
+--
+-- This library implements version 2.1 of the official Mapbox spec, as defined
+-- here: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
+
+module Gaia.VectorTile where
 
 import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Data.Vector
 import qualified Data.Vector.Unboxed as U
+
+---
 
 {- NOTES
 
@@ -19,8 +32,8 @@ Ignores "UNKNOWN" geometries
 
 -}
 
--- | A Vector Tile from version 2.1 of the official Mapbox spec, as defined
--- here: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
+-- | A high-level representation of a Vector Tile. At its simplest, a tile
+-- is just a list of `Layer`s.
 newtype VectorTile = VectorTile { layers :: Vector Layer } deriving (Eq,Show)
 
 data Layer = Layer { version :: Int
@@ -28,7 +41,8 @@ data Layer = Layer { version :: Int
                    , points :: Vector (Feature Point)
                    , linestrings :: Vector (Feature LineString)
                    , polygons :: Vector (Feature Polygon)
-                   , keys :: Vector Text  -- Needed?
+                   -- Needed? How to structure Feature-shared metadata?
+                   , keys :: Vector Text
                    , extent :: Int } deriving (Eq,Show)
 
 -- | Points in space. Using "Record Pattern Synonyms" here allows us to treat
@@ -37,6 +51,11 @@ data Layer = Layer { version :: Int
 type Point = (Int,Int)
 pattern Point :: Int -> Int -> (Int, Int)
 pattern Point{x, y} = (x, y)
+
+-- | Points are just vectors in R2, and thus form a Vector space.
+instance Monoid Point where
+  mempty = Point 0 0
+  (Point x y) `mappend` (Point x' y') = Point (x + x') (y + y')
 
 -- | `newtype` compiles away to expose only the unboxed `Vector` at runtime.
 newtype LineString = LineString { points :: U.Vector Point } deriving (Eq,Show)
