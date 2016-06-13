@@ -3,6 +3,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module    : Gaia.VectorTile
@@ -21,6 +22,8 @@ import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Data.Vector
 import qualified Data.Vector.Unboxed as U
+import           Data.Word
+import qualified Gaia.VectorTile.Raw as R
 
 ---
 
@@ -31,6 +34,8 @@ Ignores `Value` extensions
 Ignores "UNKNOWN" geometries
 
 -}
+
+{- TYPES -}
 
 -- | A high-level representation of a Vector Tile. At its simplest, a tile
 -- is just a list of `Layer`s.
@@ -92,6 +97,24 @@ class Geometry a where
 instance Geometry Point
 instance Geometry LineString
 instance Geometry Polygon
+
+type family Conversions a
+
+type instance Conversions (Feature g) = R.Feature
+--type instance Conversions (Feature LineString) = R.Feature
+--type instance Conversions (Feature Polygon) = R.Feature
+--type instance Conversions R.Feature = Feature g
+type instance Conversions (Vector Point) = Word32   -- cool!
+
+class ToProtobuf a where
+  toProto :: Conversions a -> a  -- perhaps?
+
+-- compiles! But how to get the specific instances?
+-- Perhaps `Point` needs to be converted to the `geometry` uint32.
+instance Geometry g => ToProtobuf (Feature g) where
+  toProto = undefined
+
+{- FUNCTIONS -}
 
 -- Just constrain for `Geometry` on the functions!
 -- foo :: Geometry g => Feature g -> ...

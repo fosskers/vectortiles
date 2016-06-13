@@ -31,7 +31,8 @@ import GHC.Generics (Generic)
 ---
 
 -- | A list of `Layer`s.
-data VectorTile = VectorTile { layers :: Repeated 3 (Message Layer) } deriving (Generic)
+data VectorTile = VectorTile { layers :: Repeated 3 (Message Layer) }
+                deriving (Generic,Show,Eq)
 
 instance Encode VectorTile
 instance Decode VectorTile
@@ -42,7 +43,7 @@ data Layer = Layer { version :: Required 15 (Value Word32)
                    , keys :: Repeated 3 (Value Text)
                    , values :: Repeated 4 (Message Val)
                    , extent :: Optional 5 (Value Word32)
-                   } deriving (Generic)
+                   } deriving (Generic,Show,Eq)
 
 instance Encode Layer
 instance Decode Layer
@@ -55,7 +56,7 @@ data Val = Val { string :: Optional 1 (Value Text)
                , uint64 :: Optional 5 (Value Word64)
                , sint :: Optional 6 (Value (Signed Int64))  -- ^ Z-encoded.
                , bool :: Optional 7 (Value Bool)
-               } deriving (Generic)
+               } deriving (Generic,Show,Eq)
 
 instance Encode Val
 instance Decode Val
@@ -65,9 +66,9 @@ data Feature = Feature { featureId :: Optional 1 (Value Word64)
                        , tags :: Packed 2 (Value Word32)
                        , geom :: Optional 3 (Enumeration GeomType)
                        , geometries :: Packed 4 (Value Word32)
-                       } deriving (Generic)
+                       } deriving (Generic,Show,Eq)
 
 instance Encode Feature
 instance Decode Feature
 
-data GeomType = Unknown | Point | LineString | Polygon deriving (Eq,Enum)
+data GeomType = Unknown | Point | LineString | Polygon deriving (Enum,Show,Eq)
