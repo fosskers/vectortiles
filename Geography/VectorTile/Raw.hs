@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Module    : Gaia.VectorTile.Raw
+-- Module    : Geography.VectorTile.Raw
 -- Copyright : (c) Colin Woodbury, 2016
 -- License   : Apache 2
 -- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
@@ -15,13 +15,13 @@
 --
 -- As this raw version of the data is hard to work with, in practice we convert
 -- to a more canonical Haskell type for further processing.
--- See `Gaia.VectorTile` for the user-friendly version.
+-- See `Geography.VectorTile` for the user-friendly version.
 --
 -- Please import this module @qualified@ to avoid namespace clashes:
 --
--- > import qualified Gaia.VectorTile.Raw as R
+-- > import qualified Geography.VectorTile.Raw as R
 
-module Gaia.VectorTile.Raw where
+module Geography.VectorTile.Raw where
 
 import Data.Int
 import Data.ProtocolBuffers

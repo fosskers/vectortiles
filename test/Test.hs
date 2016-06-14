@@ -10,7 +10,7 @@ import           Data.Hex
 import           Data.ProtocolBuffers
 import           Data.Serialize.Get
 import           Data.Serialize.Put
-import qualified Gaia.VectorTile.Raw as R
+import qualified Geography.VectorTile.Raw as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import qualified Text.ProtocolBuffers.WireMessage as PB

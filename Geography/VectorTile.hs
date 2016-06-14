@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module    : Gaia.VectorTile
+-- Module    : Geography.VectorTile
 -- Copyright : (c) Colin Woodbury, 2016
 -- License   : Apache 2
 -- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
@@ -16,14 +16,14 @@
 -- This library implements version 2.1 of the official Mapbox spec, as defined
 -- here: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
 
-module Gaia.VectorTile where
+module Geography.VectorTile where
 
 import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Data.Vector
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
-import qualified Gaia.VectorTile.Raw as R
+import qualified Geography.VectorTile.Raw as R
 
 ---
 
