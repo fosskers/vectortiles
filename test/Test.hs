@@ -19,15 +19,19 @@ import qualified Vector_tile.Tile as VT
 ---
 
 main :: IO ()
-main = BS.readFile "streets.mvt" >>= defaultMain . suite
+main = BS.readFile "onepoint.mvt" >>= defaultMain . suite
+--main = BS.readFile "streets.mvt" >>= defaultMain . suite
 
 {- SUITES -}
 
 suite :: BS.ByteString -> TestTree
 suite vt = testGroup "Unit Tests"
-  [ testGroup "Serialization Isomorphism"
+  [ testGroup "Decoding"
+    [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint vt
+    ]
+  , testGroup "Serialization Isomorphism"
     [ testCase ".mvt <-> Raw.Tile" $ fromRaw vt
-    , testCase "testTile <-> protobuf" testTileIso
+    , testCase "testTile <-> protobuf bytes" testTileIso
     ]
   , testGroup "Testing auto-generated code"
     [ testCase ".mvt <-> PB.Tile" $ pbRawIso vt
@@ -38,13 +42,18 @@ suite vt = testGroup "Unit Tests"
     ]
   ]
 
+testOnePoint :: BS.ByteString -> Assertion
+testOnePoint vt = case decodeIt vt of
+                    Left e -> assertFailure e
+                    Right t -> t @?= onePoint
+
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
---               Right l -> hex (encodeIt l) @=? hex vt
-               Right l -> if runPut (encodeMessage l) == vt
-                          then assert True
-                          else assertString "Isomorphism failed."
                Left e -> assertFailure e
+               Right l -> hex (encodeIt l) @?= hex vt
+--               Right l -> if runPut (encodeMessage l) == vt
+--                          then assert True
+--                          else assertString "Isomorphism failed."
 
 testTileIso :: Assertion
 testTileIso = case decodeIt pb of
@@ -61,13 +70,13 @@ pbRawIso vt = case pbIso vt of
 crossCodecIso :: Assertion
 crossCodecIso = case pbIso (encodeIt testTile) >>= decodeIt of
                   Left e -> assertFailure e
-                  Right t -> t @=? testTile
+                  Right t -> t @?= testTile
 
 -- | Will just their `ByteString` forms match?
 crossCodecIso1 :: Assertion
 crossCodecIso1 = case pbIso vt of
                   Left e -> assertFailure e
-                  Right t -> hex t @=? hex vt
+                  Right t -> hex t @?= hex vt
   where vt = encodeIt testTile
 
 -- | Isomorphism for Vector_tile.Tile
@@ -87,6 +96,9 @@ encodeIt = runPut . encodeMessage
 isRight :: Either a b -> Bool
 isRight (Right _) = True
 isRight _ = False
+
+rawTest :: IO (Either String R.VectorTile)
+rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
 testTile :: R.VectorTile
 testTile = R.VectorTile $ putField [l]
@@ -110,3 +122,24 @@ testTile = R.VectorTile $ putField [l]
                   , R.sint = putField Nothing
                   , R.bool = putField Nothing
                   }
+
+-- | Correct decoding of `onepoint.mvt`
+onePoint :: R.VectorTile
+onePoint = R.VectorTile $ putField [l]
+  where l = R.Layer { R.version = putField 1
+                    , R.name = putField "water"
+                    , R.features = putField [f]
+                    , R.keys = putField []
+                    , R.values = putField []
+                    , R.extent = putField $ Just 4096
+                    }
+        f = R.Feature { R.featureId = putField Nothing
+                      , R.tags = putField []
+                      , R.geom = putField $ Just R.Point
+                      , R.geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
+                      }
+
+{-}
+onePoint :: R.VectorTile
+onePoint = R.VectorTile { layers = Field {runField = Repeated {runRepeated = [Message {runMessage = Layer {version = Field {runField = Required {runRequired = Always {runAlways = Value {runValue = 1}}}}, name = Field {runField = Required {runRequired = Always {runAlways = Value {runValue = "water"}}}}, features = Field {runField = Repeated {runRepeated = [Message {runMessage = Feature {featureId = Field {runField = Optional {runOptional = Last {getLast = Nothing}}}, tags = Field {runField = PackedField {runPackedField = PackedList {unPackedList = []}}}, geom = Field {runField = Optional {runOptional = Last {getLast = Just (Enumeration {runEnumeration = Point})}}}, geometries = Field {runField = PackedField {runPackedField = PackedList {unPackedList = [Value {runValue = 9},Value {runValue = 10},Value {runValue = 10}]}}}}}]}}, keys = Field {runField = Repeated {runRepeated = []}}, values = Field {runField = Repeated {runRepeated = []}}, extent = Field {runField = Optional {runOptional = Last {getLast = Just (Value {runValue = 4096})}}}}}]}}}
+-}
