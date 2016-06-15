@@ -19,22 +19,35 @@ import qualified Vector_tile.Tile as VT
 ---
 
 main :: IO ()
-main = BS.readFile "onepoint.mvt" >>= defaultMain . suite
+main = do
+  op <- BS.readFile "onepoint.mvt"
+  ls <- BS.readFile "linestring.mvt"
+  pl <- BS.readFile "polygon.mvt"
+  rd <- BS.readFile "roads.mvt"
+  defaultMain $ suite op ls pl rd
 --main = BS.readFile "streets.mvt" >>= defaultMain . suite
 
 {- SUITES -}
 
-suite :: BS.ByteString -> TestTree
-suite vt = testGroup "Unit Tests"
+suite :: BS.ByteString -> BS.ByteString -> BS.ByteString -> BS.ByteString -> TestTree
+suite op ls pl rd = testGroup "Unit Tests"
   [ testGroup "Decoding"
-    [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint vt
+    [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
+    , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
+    , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
+    , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
     ]
   , testGroup "Serialization Isomorphism"
-    [ testCase ".mvt <-> Raw.Tile" $ fromRaw vt
+    [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
+    , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
+    , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
+--    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
     , testCase "testTile <-> protobuf bytes" testTileIso
     ]
   , testGroup "Testing auto-generated code"
-    [ testCase ".mvt <-> PB.Tile" $ pbRawIso vt
+    [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
+    , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
+    , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
     ]
   , testGroup "Cross-codec Isomorphisms"
     [ testCase "ByteStrings only" crossCodecIso1
@@ -46,6 +59,21 @@ testOnePoint :: BS.ByteString -> Assertion
 testOnePoint vt = case decodeIt vt of
                     Left e -> assertFailure e
                     Right t -> t @?= onePoint
+
+testLineString :: BS.ByteString -> Assertion
+testLineString vt = case decodeIt vt of
+                      Left e -> assertFailure e
+                      Right t -> t @?= oneLineString
+
+testPolygon :: BS.ByteString -> Assertion
+testPolygon vt = case decodeIt vt of
+                   Left e -> assertFailure e
+                   Right t -> t @?= onePolygon
+
+-- | For testing is decoding succeeded in generally. Makes no guarantee
+-- about the quality of the content, only that the parse succeeded.
+testDecode :: BS.ByteString -> Assertion
+testDecode bs = assert . isRight $ decodeIt bs
 
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
@@ -100,6 +128,9 @@ isRight _ = False
 rawTest :: IO (Either String R.VectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
+pbRawTest :: IO (Either String VT.Tile)
+pbRawTest = fmap fst . PB.messageGet . BSL.fromStrict <$> BS.readFile "roads.mvt"
+
 testTile :: R.VectorTile
 testTile = R.VectorTile $ putField [l]
   where l = R.Layer { R.version = putField 2
@@ -127,7 +158,7 @@ testTile = R.VectorTile $ putField [l]
 onePoint :: R.VectorTile
 onePoint = R.VectorTile $ putField [l]
   where l = R.Layer { R.version = putField 1
-                    , R.name = putField "water"
+                    , R.name = putField "OnePoint"
                     , R.features = putField [f]
                     , R.keys = putField []
                     , R.values = putField []
@@ -139,7 +170,36 @@ onePoint = R.VectorTile $ putField [l]
                       , R.geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
                       }
 
-{-}
-onePoint :: R.VectorTile
-onePoint = R.VectorTile { layers = Field {runField = Repeated {runRepeated = [Message {runMessage = Layer {version = Field {runField = Required {runRequired = Always {runAlways = Value {runValue = 1}}}}, name = Field {runField = Required {runRequired = Always {runAlways = Value {runValue = "water"}}}}, features = Field {runField = Repeated {runRepeated = [Message {runMessage = Feature {featureId = Field {runField = Optional {runOptional = Last {getLast = Nothing}}}, tags = Field {runField = PackedField {runPackedField = PackedList {unPackedList = []}}}, geom = Field {runField = Optional {runOptional = Last {getLast = Just (Enumeration {runEnumeration = Point})}}}, geometries = Field {runField = PackedField {runPackedField = PackedList {unPackedList = [Value {runValue = 9},Value {runValue = 10},Value {runValue = 10}]}}}}}]}}, keys = Field {runField = Repeated {runRepeated = []}}, values = Field {runField = Repeated {runRepeated = []}}, extent = Field {runField = Optional {runOptional = Last {getLast = Just (Value {runValue = 4096})}}}}}]}}}
--}
+-- | Correct decoding of `linestring.mvt`
+oneLineString :: R.VectorTile
+oneLineString = R.VectorTile $ putField [l]
+  where l = R.Layer { R.version = putField 1
+                    , R.name = putField "OneLineString"
+                    , R.features = putField [f]
+                    , R.keys = putField []
+                    , R.values = putField []
+                    , R.extent = putField $ Just 4096
+                    }
+        f = R.Feature { R.featureId = putField Nothing
+                      , R.tags = putField []
+                      , R.geom = putField $ Just R.LineString
+                      -- MoveTo(+5,+5), LineTo(+1195,+1195)
+                      , R.geometries = putField [9, 10, 10, 10, 2390, 2390]
+                      }
+
+-- | Correct decoding of `polygon.mvt`
+onePolygon :: R.VectorTile
+onePolygon = R.VectorTile $ putField [l]
+  where l = R.Layer { R.version = putField 1
+                    , R.name = putField "OnePolygon"
+                    , R.features = putField [f]
+                    , R.keys = putField []
+                    , R.values = putField []
+                    , R.extent = putField $ Just 4096
+                    }
+        f = R.Feature { R.featureId = putField Nothing
+                      , R.tags = putField []
+                      , R.geom = putField $ Just R.Polygon
+                      -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
+                      , R.geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
+                      }
