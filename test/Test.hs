@@ -5,7 +5,7 @@
 module Main where
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
+--import qualified Data.ByteString.Lazy as BSL
 import           Data.Hex
 import           Data.ProtocolBuffers
 import           Data.Serialize.Get
@@ -13,9 +13,9 @@ import           Data.Serialize.Put
 import qualified Geography.VectorTile.Raw as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
-import qualified Text.ProtocolBuffers.WireMessage as PB
-import qualified Vector_tile.Tile as VT
-import Geography.VectorTile.Geometry
+--import qualified Text.ProtocolBuffers.WireMessage as PB
+--import qualified Vector_tile.Tile as VT
+import           Geography.VectorTile.Geometry
 
 ---
 
@@ -45,15 +45,15 @@ suite op ls pl rd = testGroup "Unit Tests"
       --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
       , testCase "testTile <-> protobuf bytes" testTileIso
       ]
-    , testGroup "Testing auto-generated code"
-      [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
-      , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
-      , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
-      ]
-    , testGroup "Cross-codec Isomorphisms"
-      [ testCase "ByteStrings only" crossCodecIso1
-      , testCase "Full encode/decode" crossCodecIso
-      ]
+--    , testGroup "Testing auto-generated code"
+--      [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
+--      , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
+--      , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
+--      ]
+--    , testGroup "Cross-codec Isomorphisms"
+--      [ testCase "ByteStrings only" crossCodecIso1
+--      , testCase "Full encode/decode" crossCodecIso
+--      ]
     ]
   , testGroup "Geometries"
     [ testCase "Z-encoding Isomorphism" zencoding
@@ -95,6 +95,7 @@ testTileIso = case decodeIt pb of
                  Left e -> assertFailure e
   where pb = encodeIt testTile
 
+{-
 pbRawIso :: BS.ByteString -> Assertion
 pbRawIso vt = case pbIso vt of
                 Right vt' -> assertEqual "" (hex vt) (hex vt')
@@ -118,6 +119,7 @@ pbIso :: BS.ByteString -> Either String BS.ByteString
 pbIso (BSL.fromStrict -> vt) = do
    (t,_) <- PB.messageGet @VT.Tile vt
    pure . BSL.toStrict $ PB.messagePut @VT.Tile t
+-}
 
 decodeIt :: BS.ByteString -> Either String R.VectorTile
 decodeIt = runGet decodeMessage
@@ -134,8 +136,10 @@ isRight _ = False
 rawTest :: IO (Either String R.VectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
+{-}
 pbRawTest :: IO (Either String VT.Tile)
 pbRawTest = fmap fst . PB.messageGet . BSL.fromStrict <$> BS.readFile "roads.mvt"
+-}
 
 testTile :: R.VectorTile
 testTile = R.VectorTile $ putField [l]
