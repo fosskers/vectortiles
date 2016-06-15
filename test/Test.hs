@@ -55,8 +55,9 @@ suite op ls pl rd = testGroup "Unit Tests"
       , testCase "Full encode/decode" crossCodecIso
       ]
     ]
-  , testGroup "Z-encoding"
-    [ testCase "Isomorphism" zencoding
+  , testGroup "Geometries"
+    [ testCase "Z-encoding Isomorphism" zencoding
+    , testCase "Command Parsing" commandTest
     ]
   ]
 
@@ -212,3 +213,6 @@ onePolygon = R.VectorTile $ putField [l]
 zencoding :: Assertion
 zencoding = assert $ map (unzig . zig) vs @?= vs
   where vs = [0,(-1),1,(-2),2,(-3),3]
+
+commandTest :: Assertion
+commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right [MoveTo (2,2),LineTo (3,2),LineTo (-3,2),ClosePath]
