@@ -15,6 +15,9 @@
 --
 -- This library implements version 2.1 of the official Mapbox spec, as defined
 -- here: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
+--
+-- Note that currently this library ignores top-level protobuf extensions,
+-- `Value` extensions, and "UNKNOWN" geometries.
 
 module Geography.VectorTile where
 
@@ -26,14 +29,6 @@ import           Data.Word
 import qualified Geography.VectorTile.Raw as R
 
 ---
-
-{- NOTES
-
-Ignores top-level protobuf extensions.
-Ignores `Value` extensions
-Ignores "UNKNOWN" geometries
-
--}
 
 {- TYPES -}
 
@@ -60,7 +55,7 @@ pattern Point{x, y} = (x, y)
 -- | Points are just vectors in R2, and thus form a Vector space.
 instance Monoid Point where
   mempty = Point 0 0
-  (Point x y) `mappend` (Point x' y') = Point (x + x') (y + y')
+  (Point a b) `mappend` (Point a' b') = Point (a + a') (b + b')
 
 -- | `newtype` compiles away to expose only the unboxed `Vector` at runtime.
 newtype LineString = LineString { points :: U.Vector Point } deriving (Eq,Show)
@@ -98,16 +93,17 @@ instance Geometry Point
 instance Geometry LineString
 instance Geometry Polygon
 
-type family Conversions a
-
-type instance Conversions (Feature g) = R.Feature
---type instance Conversions (Feature LineString) = R.Feature
---type instance Conversions (Feature Polygon) = R.Feature
---type instance Conversions R.Feature = Feature g
-type instance Conversions (Vector Point) = Word32   -- cool!
+type family Convertable a
+type instance Convertable (Feature g) = R.Feature
+--type instance Convertable R.Feature = Feature
+--type instance Convertable (Feature LineString) = R.Feature
+--type instance Convertable (Feature Polygon) = R.Feature
+--type instance Convertable R.Feature = Feature g
+type instance Convertable (Vector Point) = Word32   -- cool!
+--type instance Convertable
 
 class ToProtobuf a where
-  toProto :: Conversions a -> a  -- perhaps?
+  toProto :: Convertable a -> a  -- perhaps?
 
 -- compiles! But how to get the specific instances?
 -- Perhaps `Point` needs to be converted to the `geometry` uint32.
@@ -120,7 +116,9 @@ instance Geometry g => ToProtobuf (Feature g) where
 -- foo :: Geometry g => Feature g -> ...
 
 -- | Euclidean distance.
+{-}
 distance :: Point -> Point -> Float
 distance p1 p2 = sqrt . fromIntegral $ dx ^ 2 + dy ^ 2
   where dx = x p1 - x p2
         dy = y p1 - y p2
+-}

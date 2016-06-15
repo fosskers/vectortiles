@@ -15,6 +15,7 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
 import qualified Text.ProtocolBuffers.WireMessage as PB
 import qualified Vector_tile.Tile as VT
+import Geography.VectorTile.Geometry
 
 ---
 
@@ -30,27 +31,32 @@ main = do
 
 suite :: BS.ByteString -> BS.ByteString -> BS.ByteString -> BS.ByteString -> TestTree
 suite op ls pl rd = testGroup "Unit Tests"
-  [ testGroup "Decoding"
-    [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
-    , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
-    , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
-    , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
+  [ testGroup "Protobuf"
+    [ testGroup "Decoding"
+      [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
+      , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
+      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
+      , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
+      ]
+    , testGroup "Serialization Isomorphism"
+      [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
+      , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
+      , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
+      --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
+      , testCase "testTile <-> protobuf bytes" testTileIso
+      ]
+    , testGroup "Testing auto-generated code"
+      [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
+      , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
+      , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
+      ]
+    , testGroup "Cross-codec Isomorphisms"
+      [ testCase "ByteStrings only" crossCodecIso1
+      , testCase "Full encode/decode" crossCodecIso
+      ]
     ]
-  , testGroup "Serialization Isomorphism"
-    [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
-    , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
-    , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
---    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
-    , testCase "testTile <-> protobuf bytes" testTileIso
-    ]
-  , testGroup "Testing auto-generated code"
-    [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
-    , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
-    , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
-    ]
-  , testGroup "Cross-codec Isomorphisms"
-    [ testCase "ByteStrings only" crossCodecIso1
-    , testCase "Full encode/decode" crossCodecIso
+  , testGroup "Z-encoding"
+    [ testCase "Isomorphism" zencoding
     ]
   ]
 
@@ -202,3 +208,7 @@ onePolygon = R.VectorTile $ putField [l]
                       -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
                       , R.geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
                       }
+
+zencoding :: Assertion
+zencoding = assert $ map (unzig . zig) vs @?= vs
+  where vs = [0,(-1),1,(-2),2,(-3),3]
