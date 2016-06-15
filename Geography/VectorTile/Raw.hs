@@ -1,6 +1,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 -- |
 -- Module    : Geography.VectorTile.Raw
@@ -23,6 +24,7 @@
 
 module Geography.VectorTile.Raw where
 
+import Control.DeepSeq (NFData)
 import Data.Int
 import Data.ProtocolBuffers
 import Data.Text (Text)
@@ -37,6 +39,7 @@ data VectorTile = VectorTile { layers :: Repeated 3 (Message Layer) }
 
 instance Encode VectorTile
 instance Decode VectorTile
+instance NFData VectorTile
 
 data Layer = Layer { version :: Required 15 (Value Word32)
                    , name :: Required 1 (Value Text)
@@ -48,6 +51,7 @@ data Layer = Layer { version :: Required 15 (Value Word32)
 
 instance Encode Layer
 instance Decode Layer
+instance NFData Layer
 
 -- | The /Value/ types of metadata fields.
 data Val = Val { string :: Optional 1 (Value Text)
@@ -61,6 +65,7 @@ data Val = Val { string :: Optional 1 (Value Text)
 
 instance Encode Val
 instance Decode Val
+instance NFData Val
 
 -- | A set of geometries unified by some theme.
 data Feature = Feature { featureId :: Optional 1 (Value Word64)
@@ -71,5 +76,11 @@ data Feature = Feature { featureId :: Optional 1 (Value Word64)
 
 instance Encode Feature
 instance Decode Feature
+instance NFData Feature
 
-data GeomType = Unknown | Point | LineString | Polygon deriving (Enum,Show,Eq)
+data GeomType = Unknown | Point | LineString | Polygon
+              deriving (Generic,Enum,Show,Eq)
+
+instance Encode GeomType
+instance Decode GeomType
+instance NFData GeomType

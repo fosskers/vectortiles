@@ -25,7 +25,6 @@ main = do
   pl <- BS.readFile "polygon.mvt"
   rd <- BS.readFile "roads.mvt"
   defaultMain $ suite op ls pl rd
---main = BS.readFile "streets.mvt" >>= defaultMain . suite
 
 {- SUITES -}
 

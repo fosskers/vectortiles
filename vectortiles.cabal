@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                vectortiles
-version:             0.1.0
+version:             1.0.0
 synopsis:            GIS Vector Tiles, as defined by Mapbox.
 -- description:
 homepage:            https://github.com/fosskers/vectortiles
@@ -38,6 +38,7 @@ library
                      , protobuf >= 0.2.1.1 && < 0.3
                      , protocol-buffers >= 2.4 && < 2.5
                      , protocol-buffers-descriptor >= 2.4 && < 2.5
+                     , deepseq >= 1.4 && < 1.5
 
   -- hs-source-dirs:
   default-language:    Haskell2010
@@ -45,7 +46,6 @@ library
 
 test-suite vectortiles-test
   type:                exitcode-stdio-1.0
-  other-extensions:    OverloadedStrings
 
   build-depends:       base >=4.9 && <4.10
                      , tasty >= 0.10.1.2
@@ -62,3 +62,20 @@ test-suite vectortiles-test
   main-is:             Test.hs
   default-language:    Haskell2010
   ghc-options: -Wall -threaded
+
+benchmark vectortiles-bench
+  type: exitcode-stdio-1.0
+
+  build-depends:       base >= 4.9 && < 4.10
+                     , criterion >= 1.1 && < 1.2
+                     , vectortiles
+                     , protobuf
+--                     , protocol-buffers
+                     , bytestring
+                     , cereal
+--                     , deepseq
+
+  hs-source-dirs:      bench
+  main-is:             Bench.hs
+  default-language:    Haskell2010
+  ghc-options: -Wall -threaded -O
