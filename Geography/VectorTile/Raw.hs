@@ -5,7 +5,7 @@
 
 -- |
 -- Module    : Geography.VectorTile.Raw
--- Copyright : (c) Colin Woodbury, 2016
+-- Copyright : (c) Azavea, 2016
 -- License   : Apache 2
 -- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
 --
