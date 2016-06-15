@@ -71,9 +71,7 @@ newtype Polygon = Polygon { points :: U.Vector Point } deriving (Eq,Show)
 -- to convert between an encodable list of `Command`s.
 class Geometry a where
   fromCommands :: [Command] -> Either Text (V.Vector a)
-  toCommand :: a -> V.Vector Command
   toCommands :: V.Vector a -> V.Vector Command
-  toCommands = V.concatMap toCommand
 
 -- | A valid `R.Feature` of points should contain only `MoveTo`
 -- commands.
@@ -82,20 +80,25 @@ instance Geometry Point where
   fromCommands (MoveTo p : cs) = V.cons p <$> fromCommands cs
   fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
 
-  toCommand = undefined
+  toCommands ps = evalState (mapM f ps) (0,0)
+    where f p = do
+            curr <- get
+            let diff = (x p - x curr, y p - y curr)
+            put p
+            pure $ MoveTo diff
 
 -- Need a generalized parser for this, `pipes-parser` might work.
 instance Geometry LineString where
   fromCommands cs = evalState (f cs) (0,0)
     where f = undefined
 
-  toCommand = undefined
+  toCommands = undefined
 
 -- Need a generalized parser for this.
 instance Geometry Polygon where
   fromCommands = undefined
 
-  toCommand = undefined
+  toCommands = undefined
 
 -- | The possible commands, and the values they hold.
 data Command = MoveTo (Int,Int) | LineTo (Int,Int) | ClosePath deriving (Eq,Show)
