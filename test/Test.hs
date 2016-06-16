@@ -60,7 +60,8 @@ suite op ls pl rd = testGroup "Unit Tests"
     [ testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
     , testCase "[Word32] <-> [Command]" commandIso
-    , testCase "[Word32] <-> V.Vector Point" commandIso2
+    , testCase "[Word32] <-> V.Vector Point" pointIso
+    , testCase "[Word32] <-> V.Vector LineString" linestringIso
     ]
   ]
 
@@ -229,13 +230,18 @@ commandTest :: Assertion
 commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right
   [ MoveTo $ V.singleton (2,2)
   , LineTo $ V.fromList [(3,2),(-3,2)]
-  , ClosePath]
+  , ClosePath ]
 
 commandIso :: Assertion
 commandIso = assert $ (uncommands . fromRight $ commands cs) @?= cs
   where cs = [9,4,4,18,6,4,5,4,15]
 
-commandIso2 :: Assertion
-commandIso2 = cs' @?= cs
+pointIso :: Assertion
+pointIso = cs' @?= cs
   where cs = [17,4,4,6,6]
         cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Point)
+
+linestringIso :: Assertion
+linestringIso = cs' @?= cs
+  where cs = [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4]
+        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @LineString)

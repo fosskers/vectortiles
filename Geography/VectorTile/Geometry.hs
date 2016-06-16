@@ -96,7 +96,13 @@ instance Geometry LineString where
           f [] = pure $ Right V.empty
           f _  = pure $ Left "LineString decode: Invalid command sequence given."
 
-  toCommands = undefined
+  toCommands ls = concat $ evalState (mapM f ls) (0,0)
+    where f (LineString ps) = do
+            curr <- get
+            let (h,t) = (U.head ps, U.tail ps)
+            put h
+            l <- U.convert <$> U.mapM collapse t
+            pure [MoveTo $ V.singleton (x h - x curr, y h - y curr), LineTo l]
 
 -- Need a generalized parser for this.
 instance Geometry Polygon where
@@ -189,5 +195,3 @@ collapse p = do
   let diff = (x p - x curr, y p - y curr)
   put p
   pure diff
-
--- commands [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4] >>= fromCommands @LineString
