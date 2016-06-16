@@ -71,21 +71,26 @@ newtype Polygon = Polygon { points :: U.Vector Point } deriving (Eq,Show)
 -- to convert between an encodable list of `Command`s.
 class Geometry a where
   fromCommands :: [Command] -> Either Text (V.Vector a)
-  toCommands :: V.Vector a -> V.Vector Command
+  toCommands :: V.Vector a -> [Command]
 
--- | A valid `R.Feature` of points should contain only `MoveTo`
--- commands.
+-- | A valid `R.Feature` of points must contain a single `MoveTo` command.
 instance Geometry Point where
   fromCommands [] = Right V.empty
-  fromCommands (MoveTo p : cs) = V.cons p <$> fromCommands cs
+  fromCommands (MoveTo ps : []) = Right $ evalState (mapM f ps) (0,0)
+    where f p = do
+            curr <- get
+            let here = (x p + x curr, y p + y curr)
+            put here
+            pure here
   fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
 
-  toCommands ps = evalState (mapM f ps) (0,0)
+  -- | A multipoint geometry must reduce to a single `MoveTo` command.
+  toCommands ps = [MoveTo $ evalState (mapM f ps) (0,0)]
     where f p = do
             curr <- get
             let diff = (x p - x curr, y p - y curr)
             put p
-            pure $ MoveTo diff
+            pure diff
 
 -- Need a generalized parser for this, `pipes-parser` might work.
 instance Geometry LineString where
@@ -101,7 +106,9 @@ instance Geometry Polygon where
   toCommands = undefined
 
 -- | The possible commands, and the values they hold.
-data Command = MoveTo (Int,Int) | LineTo (Int,Int) | ClosePath deriving (Eq,Show)
+data Command = MoveTo (V.Vector (Int,Int))
+             | LineTo (V.Vector (Int,Int))
+             | ClosePath deriving (Eq,Show)
 
 -- | Z-encode a 64-bit Int.
 zig :: Int -> Word32
@@ -129,11 +136,11 @@ commands :: [Word32] -> Either T.Text [Command]
 commands [] = Right []
 commands (n:ns) = parseCommand n >>= f
   where f (1,count) = do
-          mts <- map (MoveTo . both unzig) <$> pairs (take (count * 2) ns)
-          (mts ++) <$> commands (drop (count * 2) ns)
+          mts <- MoveTo . V.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
+          (mts :) <$> commands (drop (count * 2) ns)
         f (2,count) = do
-          mts <- map (LineTo . both unzig) <$> pairs (take (count * 2) ns)
-          (mts ++) <$> commands (drop (count * 2) ns)
+          mts <- LineTo . V.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
+          (mts :) <$> commands (drop (count * 2) ns)
         f (7,_) = (ClosePath :) <$> commands ns
         f _ = Left "Sentinel: You should never see this."
 
