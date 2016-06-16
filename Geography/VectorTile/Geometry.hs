@@ -23,6 +23,7 @@ module Geography.VectorTile.Geometry
   -- * Commands
   , Command(..)
   , commands
+  , uncommands
    -- * Z-Encoding
   , zig
   , unzig
@@ -119,22 +120,27 @@ unzig :: Word32 -> Int
 unzig n = fromIntegral (fromIntegral unzigged :: Int32)
   where unzigged = shift n (-1) `xor` negate (n .&. 1)
 
-parseCommand :: Word32 -> Either T.Text (Int,Int)
-parseCommand n = case (cid,count) of
+-- | Divide a "Command Integer" into its @(Command,Count)@.
+parseCmd :: Word32 -> Either T.Text (Int,Int)
+parseCmd n = case (cmd,count) of
   (1,m) -> Right $ both fromIntegral (1,m)
   (2,m) -> Right $ both fromIntegral (2,m)
   (7,1) -> Right (7,1)
   (7,m) -> Left $ "ClosePath was given a parameter count: " <> T.pack (show m)
   (m,_) -> Left $ [st|Invalid command integer %d found in: %X|] m n
-  where cid = n .&. 7
+  where cmd = n .&. 7
         count = shift n (-3)
+
+-- | Recombine a Command ID and parameter count into a Command Integer.
+unparseCmd :: (Int,Int) -> Word32
+unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
 
 -- | Attempt to parse a list of Command/Parameter integers, as defined here:
 --
 -- https://github.com/mapbox/vector-tile-spec/tree/master/2.1#43-geometry-encoding
 commands :: [Word32] -> Either T.Text [Command]
 commands [] = Right []
-commands (n:ns) = parseCommand n >>= f
+commands (n:ns) = parseCmd n >>= f
   where f (1,count) = do
           mts <- MoveTo . V.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
           (mts :) <$> commands (drop (count * 2) ns)
@@ -144,6 +150,14 @@ commands (n:ns) = parseCommand n >>= f
         f (7,_) = (ClosePath :) <$> commands ns
         f _ = Left "Sentinel: You should never see this."
 
+-- | Convert a list of parsed `Command`s back into their original Command
+-- and Z-encoded Parameter integer forms.
+uncommands :: [Command] -> [Word32]
+uncommands = V.toList . V.concat . map f
+  where f (MoveTo ps) = (V.cons $ unparseCmd (1, V.length ps)) $ params ps
+        f (LineTo ls) = (V.cons $ unparseCmd (2, V.length ls)) $ params ls
+        f ClosePath = V.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
+
 {- UTIL -}
 
 pairs :: [a] -> Either T.Text [(a,a)]
@@ -151,5 +165,10 @@ pairs [] = Right []
 pairs [_] = Left "Uneven number of parameters given."
 pairs (x:y:zs) = ((x,y) :) <$>  pairs zs
 
+-- | Apply a pure function to both elements of a tuple.
 both :: (a -> b) -> (a,a) -> (b,b)
 both f (x,y) = (f x, f y)
+
+-- | Transform a `V.Vector` of `Point`s into one of Z-encoded Parameter ints.
+params :: V.Vector (Int,Int) -> V.Vector Word32
+params = V.foldr (\(a,b) acc -> V.cons (zig a) $ V.cons (zig b) acc) V.empty

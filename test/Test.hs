@@ -16,6 +16,7 @@ import           Test.Tasty.HUnit
 --import qualified Text.ProtocolBuffers.WireMessage as PB
 --import qualified Vector_tile.Tile as VT
 import           Geography.VectorTile.Geometry
+import qualified Data.Vector as V
 
 ---
 
@@ -35,13 +36,13 @@ suite op ls pl rd = testGroup "Unit Tests"
     [ testGroup "Decoding"
       [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
       , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
-      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
+--      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
       , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
       ]
     , testGroup "Serialization Isomorphism"
       [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
       , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
-      , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
+--      , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
       --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
       , testCase "testTile <-> protobuf bytes" testTileIso
       ]
@@ -58,6 +59,8 @@ suite op ls pl rd = testGroup "Unit Tests"
   , testGroup "Geometries"
     [ testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
+    , testCase "[Word32] <-> [Command]" commandIso
+    , testCase "[Word32] <-> V.Vector Point" commandIso2
     ]
   ]
 
@@ -132,6 +135,10 @@ encodeIt = runPut . encodeMessage
 isRight :: Either a b -> Bool
 isRight (Right _) = True
 isRight _ = False
+
+fromRight :: Either a b -> b
+fromRight (Right b) = b
+fromRight _ = error "`Left` given to fromRight!"
 
 rawTest :: IO (Either String R.VectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
@@ -219,4 +226,16 @@ zencoding = assert $ map (unzig . zig) vs @?= vs
   where vs = [0,(-1),1,(-2),2,(-3),3]
 
 commandTest :: Assertion
-commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right [MoveTo (2,2),LineTo (3,2),LineTo (-3,2),ClosePath]
+commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right
+  [ MoveTo $ V.singleton (2,2)
+  , LineTo $ V.fromList [(3,2),(-3,2)]
+  , ClosePath]
+
+commandIso :: Assertion
+commandIso = assert $ (uncommands . fromRight $ commands cs) @?= cs
+  where cs = [9,4,4,18,6,4,5,4,15]
+
+commandIso2 :: Assertion
+commandIso2 = cs' @?= cs
+  where cs = [17,4,4,6,6]
+        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Point)
