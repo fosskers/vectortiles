@@ -74,29 +74,27 @@ class Geometry a where
   fromCommands :: [Command] -> Either Text (V.Vector a)
   toCommands :: V.Vector a -> [Command]
 
--- | A valid `R.Feature` of points must contain a single `MoveTo` command.
+-- | A valid `R.Feature` of points must contain a single `MoveTo` command
+-- with a count greater than 0.
 instance Geometry Point where
-  fromCommands [] = Right V.empty
-  fromCommands (MoveTo ps : []) = Right $ evalState (mapM f ps) (0,0)
-    where f p = do
-            curr <- get
-            let here = (x p + x curr, y p + y curr)
-            put here
-            pure here
+  fromCommands (MoveTo ps : []) = Right $ evalState (mapM expand ps) (0,0)
   fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
+  fromCommands [] = Left "No points given!"
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
-  toCommands ps = [MoveTo $ evalState (mapM f ps) (0,0)]
-    where f p = do
-            curr <- get
-            let diff = (x p - x curr, y p - y curr)
-            put p
-            pure diff
+  toCommands ps = [MoveTo $ evalState (mapM collapse ps) (0,0)]
 
 -- Need a generalized parser for this, `pipes-parser` might work.
+-- | A valid `R.Feature` of linestrings must contain pairs of:
+--
+-- A `MoveTo` with a count of 1, followed by one `LineTo` command with
+-- a count greater than 0.
 instance Geometry LineString where
   fromCommands cs = evalState (f cs) (0,0)
-    where f = undefined
+    where f (MoveTo p : LineTo ps : rs) = (fmap . V.cons) <$> ls <*> f rs
+            where ls = LineString . U.convert <$> mapM expand (p <> ps)
+          f [] = pure $ Right V.empty
+          f _  = pure $ Left "LineString decode: Invalid command sequence given."
 
   toCommands = undefined
 
@@ -172,3 +170,24 @@ both f (x,y) = (f x, f y)
 -- | Transform a `V.Vector` of `Point`s into one of Z-encoded Parameter ints.
 params :: V.Vector (Int,Int) -> V.Vector Word32
 params = V.foldr (\(a,b) acc -> V.cons (zig a) $ V.cons (zig b) acc) V.empty
+
+-- | Expand a pair of diffs from some reference point into that
+-- of a `Point` value. The reference point is moved to our new `Point`.
+expand :: (Int,Int) -> State (Int,Int) Point
+expand p = do
+  curr <- get
+  let here = (x p + x curr, y p + y curr)
+  put here
+  pure here
+
+-- | Collapse a given `Point` into a pair of diffs, relative to
+-- the previous point in the sequence. The reference point is moved
+-- to the `Point` given.
+collapse :: Point -> State (Int,Int) (Int,Int)
+collapse p = do
+  curr <- get
+  let diff = (x p - x curr, y p - y curr)
+  put p
+  pure diff
+
+-- commands [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4] >>= fromCommands @LineString
