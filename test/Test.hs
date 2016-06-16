@@ -17,6 +17,7 @@ import           Test.Tasty.HUnit
 --import qualified Vector_tile.Tile as VT
 import           Geography.VectorTile.Geometry
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
 
 ---
 
@@ -228,8 +229,8 @@ zencoding = assert $ map (unzig . zig) vs @?= vs
 
 commandTest :: Assertion
 commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right
-  [ MoveTo $ V.singleton (2,2)
-  , LineTo $ V.fromList [(3,2),(-3,2)]
+  [ MoveTo $ U.singleton (2,2)
+  , LineTo $ U.fromList [(3,2),(-3,2)]
   , ClosePath ]
 
 commandIso :: Assertion

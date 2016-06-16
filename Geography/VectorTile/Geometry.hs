@@ -77,12 +77,12 @@ class Geometry a where
 -- | A valid `R.Feature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance Geometry Point where
-  fromCommands (MoveTo ps : []) = Right $ evalState (mapM expand ps) (0,0)
+  fromCommands (MoveTo ps : []) = Right . U.convert $ evalState (U.mapM expand ps) (0,0)
   fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
   fromCommands [] = Left "No points given!"
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
-  toCommands ps = [MoveTo $ evalState (mapM collapse ps) (0,0)]
+  toCommands ps = [MoveTo $ evalState (U.mapM collapse $ U.convert ps) (0,0)]
 
 -- Need a generalized parser for this, `pipes-parser` might work.
 -- | A valid `R.Feature` of linestrings must contain pairs of:
@@ -92,7 +92,7 @@ instance Geometry Point where
 instance Geometry LineString where
   fromCommands cs = evalState (f cs) (0,0)
     where f (MoveTo p : LineTo ps : rs) = (fmap . V.cons) <$> ls <*> f rs
-            where ls = LineString . U.convert <$> mapM expand (p <> ps)
+            where ls = LineString <$> U.mapM expand (p <> ps)
           f [] = pure $ Right V.empty
           f _  = pure $ Left "LineString decode: Invalid command sequence given."
 
@@ -101,8 +101,8 @@ instance Geometry LineString where
             curr <- get
             let (h,t) = (U.head ps, U.tail ps)
             put h
-            l <- U.convert <$> U.mapM collapse t
-            pure [MoveTo $ V.singleton (x h - x curr, y h - y curr), LineTo l]
+            l <- U.mapM collapse t
+            pure [MoveTo $ U.singleton (x h - x curr, y h - y curr), LineTo l]
 
 -- Need a generalized parser for this.
 instance Geometry Polygon where
@@ -111,8 +111,8 @@ instance Geometry Polygon where
   toCommands = undefined
 
 -- | The possible commands, and the values they hold.
-data Command = MoveTo (V.Vector (Int,Int))
-             | LineTo (V.Vector (Int,Int))
+data Command = MoveTo (U.Vector (Int,Int))
+             | LineTo (U.Vector (Int,Int))
              | ClosePath deriving (Eq,Show)
 
 -- | Z-encode a 64-bit Int.
@@ -146,10 +146,10 @@ commands :: [Word32] -> Either T.Text [Command]
 commands [] = Right []
 commands (n:ns) = parseCmd n >>= f
   where f (1,count) = do
-          mts <- MoveTo . V.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
+          mts <- MoveTo . U.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
           (mts :) <$> commands (drop (count * 2) ns)
         f (2,count) = do
-          mts <- LineTo . V.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
+          mts <- LineTo . U.fromList . map (both unzig) <$> pairs (take (count * 2) ns)
           (mts :) <$> commands (drop (count * 2) ns)
         f (7,_) = (ClosePath :) <$> commands ns
         f _ = Left "Sentinel: You should never see this."
@@ -157,10 +157,10 @@ commands (n:ns) = parseCmd n >>= f
 -- | Convert a list of parsed `Command`s back into their original Command
 -- and Z-encoded Parameter integer forms.
 uncommands :: [Command] -> [Word32]
-uncommands = V.toList . V.concat . map f
-  where f (MoveTo ps) = (V.cons $ unparseCmd (1, V.length ps)) $ params ps
-        f (LineTo ls) = (V.cons $ unparseCmd (2, V.length ls)) $ params ls
-        f ClosePath = V.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
+uncommands = U.toList . U.concat . map f
+  where f (MoveTo ps) = (U.cons $ unparseCmd (1, U.length ps)) $ params ps
+        f (LineTo ls) = (U.cons $ unparseCmd (2, U.length ls)) $ params ls
+        f ClosePath = U.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
 
 {- UTIL -}
 
@@ -174,8 +174,8 @@ both :: (a -> b) -> (a,a) -> (b,b)
 both f (x,y) = (f x, f y)
 
 -- | Transform a `V.Vector` of `Point`s into one of Z-encoded Parameter ints.
-params :: V.Vector (Int,Int) -> V.Vector Word32
-params = V.foldr (\(a,b) acc -> V.cons (zig a) $ V.cons (zig b) acc) V.empty
+params :: U.Vector (Int,Int) -> U.Vector Word32
+params = U.foldr (\(a,b) acc -> U.cons (zig a) $ U.cons (zig b) acc) U.empty
 
 -- | Expand a pair of diffs from some reference point into that
 -- of a `Point` value. The reference point is moved to our new `Point`.
