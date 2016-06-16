@@ -63,8 +63,7 @@ instance Monoid Point where
 -- at runtime.
 newtype LineString = LineString { points :: U.Vector Point } deriving (Eq,Show)
 
--- | Question: Do we want Polygons to know about their inner polygons?
--- If not, we get the better-performing implementation below.
+-- | A polygon aware of its inner polygons.
 data Polygon = Polygon { points :: U.Vector Point
                        , inner :: V.Vector Polygon } deriving (Eq,Show)
 
@@ -157,7 +156,14 @@ instance Geometry Polygon where
                       modify (\s -> s { inner = V.snoc (inner s) p })
                       pure acc
 
-  toCommands = undefined
+  toCommands ps = concat $ evalState (mapM f ps) (0,0)
+    where f (Polygon p i) = do
+            curr <- get
+            let (h,t) = (U.head p, U.tail $ U.init p)  -- Exclude the final point.
+            put h
+            l <- U.mapM collapse t
+            let cs = [MoveTo $ U.singleton (x h - x curr, y h - y curr), LineTo l, ClosePath]
+            concat . V.cons cs <$> mapM f i
 
 -- | The possible commands, and the values they hold.
 data Command = MoveTo (U.Vector (Int,Int))
@@ -244,11 +250,3 @@ collapse p = do
   let diff = (x p - x curr, y p - y curr)
   put p
   pure diff
-
--- Two external rings
-foo :: Either Text (V.Vector Polygon)
-foo = commands [9,4,4,18,6,4,5,4,15,9,4,4,18,6,4,5,4,15] >>= fromCommands @Polygon
-
--- One external, one internal
-bar :: Either Text (V.Vector Polygon)
-bar = commands [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15] >>= fromCommands @Polygon
