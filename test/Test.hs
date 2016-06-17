@@ -20,10 +20,10 @@ import qualified Data.Vector.Unboxed as U
 
 main :: IO ()
 main = do
-  op <- BS.readFile "onepoint.mvt"
-  ls <- BS.readFile "linestring.mvt"
-  pl <- BS.readFile "polygon.mvt"
-  rd <- BS.readFile "roads.mvt"
+  op <- BS.readFile "test/onepoint.mvt"
+  ls <- BS.readFile "test/linestring.mvt"
+  pl <- BS.readFile "test/polygon.mvt"
+  rd <- BS.readFile "test/roads.mvt"
   defaultMain $ suite op ls pl rd
 
 {- SUITES -}

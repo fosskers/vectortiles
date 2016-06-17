@@ -16,8 +16,10 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
-extra-source-files:    streets.mvt
-                     , onepoint.mvt
+extra-source-files:    test/roads.mvt
+                     , test/onepoint.mvt
+                     , test/linestring.mvt
+                     , test/polygon.mvt
 
 library
   exposed-modules:     Geography.VectorTile
@@ -40,7 +42,7 @@ library
 
   -- hs-source-dirs:
   default-language:    Haskell2010
---  ghc-options: -Wall
+--  ghc-options: -O2
 
 test-suite vectortiles-test
   type:                exitcode-stdio-1.0
