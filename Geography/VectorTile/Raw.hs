@@ -41,6 +41,8 @@ instance Encode VectorTile
 instance Decode VectorTile
 instance NFData VectorTile
 
+-- | Contains a pseudo-map of metadata, to be shared across all `Feature`s
+-- of this `Layer`.
 data Layer = Layer { version :: Required 15 (Value Word32)
                    , name :: Required 1 (Value Text)
                    , features :: Repeated 2 (Message Feature)
@@ -78,6 +80,8 @@ instance Encode Feature
 instance Decode Feature
 instance NFData Feature
 
+-- | The four potential Geometry types. The spec allows for encoders to set
+-- `Unknown` as the type, but our decoder ignores these.
 data GeomType = Unknown | Point | LineString | Polygon
               deriving (Generic,Enum,Show,Eq)
 

@@ -1,6 +1,5 @@
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module    : Geography.VectorTile
@@ -14,17 +13,36 @@
 -- here: https://github.com/mapbox/vector-tile-spec/tree/master/2.1
 --
 -- Note that currently this library ignores top-level protobuf extensions,
--- `Value` extensions, and "UNKNOWN" geometries.
+-- /Value/ extensions, and /UNKNOWN/ geometries.
 
-module Geography.VectorTile where
+module Geography.VectorTile
+  ( -- * Types
+    VectorTile(..)
+  , Layer(..)
+  , Feature(..)
+  , Val(..)
+    -- * Conversions
+    -- ** From Protobuf
+  , tile
+  , layer
+  , features
+  , value
+    -- ** To Protobuf
+  ) where
 
+import           Control.Applicative ((<|>))
+import           Data.Foldable (foldrM)
+import           Data.Int
+import           Data.List (sortOn, groupBy)
 import qualified Data.Map.Lazy as M
+import           Data.ProtocolBuffers
 import           Data.Text (Text,pack)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import           Geography.VectorTile.Geometry
 import qualified Geography.VectorTile.Raw as R
+import           Geography.VectorTile.Util
 import           Text.Printf.TH
 
 ---
@@ -33,15 +51,19 @@ import           Text.Printf.TH
 
 -- | A high-level representation of a Vector Tile. At its simplest, a tile
 -- is just a list of `Layer`s.
+--
+-- There is potential to implement `layers` as a `M.Map`, with its String-based
+-- `name` as a key.
 newtype VectorTile = VectorTile { layers :: V.Vector Layer } deriving (Eq,Show)
 
-data Layer = Layer { version :: Int
+-- | A layer.
+data Layer = Layer { version :: Int  -- ^ Foo
                    , name :: Text
                    , points :: V.Vector (Feature Point)
                    , linestrings :: V.Vector (Feature LineString)
                    , polygons :: V.Vector (Feature Polygon)
                    -- Needed? How to structure Feature-shared metadata?
-                   , keys :: V.Vector Text
+--                   , keys :: V.Vector Text
                    , extent :: Int } deriving (Eq,Show)
 
 -- | A geographic feature. Features are a set of geometries that share
@@ -58,35 +80,73 @@ data Feature g = Feature { featureId :: Int
                          , metadata :: M.Map Text Val
                          , geometries :: V.Vector g } deriving (Eq,Show)
 
--- Needs expanding.
-data Val = Str deriving (Eq,Show)
+-- | Legal Metadata Value types.
+data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
+         deriving (Eq,Show)
 
-type family Convertable a
-type instance Convertable (Feature g) = R.Feature
---type instance Convertable R.Feature = Feature
---type instance Convertable (Feature LineString) = R.Feature
---type instance Convertable (Feature Polygon) = R.Feature
---type instance Convertable R.Feature = Feature g
---type instance Convertable (Vector Point) = Word32   -- cool!
---type instance Convertable
+-- | Convert a raw `R.VectorTile` of parsed protobuf data into a useable
+-- `VectorTile`.
+tile :: R.VectorTile -> Either Text VectorTile
+tile = fmap (VectorTile . V.fromList) . mapM layer . getField . R.layers
 
-class ToProtobuf a where
-  toProto :: Convertable a -> a  -- perhaps?
+-- | Convert a single raw `R.Layer` of parsed protobuf data into a useable
+-- `Layer`.
+layer :: R.Layer -> Either Text Layer
+layer l = do
+  (ps,ls,polys) <- features keys vals . getField $ R.features l
+  pure Layer { version = fromIntegral . getField $ R.version l
+             , name = getField $ R.name l
+             , points = ps
+             , linestrings = ls
+             , polygons = polys
+             , extent = maybe 4096 fromIntegral (getField $ R.extent l) }
+  where keys = getField $ R.keys l
+        vals = getField $ R.values l
 
--- compiles! But how to get the specific instances?
--- Perhaps `Point` needs to be converted to the `geometry` uint32.
---instance Geometry g => ToProtobuf (Feature g) where
---  toProto = undefined
 
-{- FUNCTIONS -}
+-- | Convert a list of raw `R.Feature` of parsed protobuf data into `V.Vector`s
+-- of each of the three legal `Geometry` types.
+features :: [Text] -> [R.Val] -> [R.Feature]
+  -> Either Text (V.Vector (Feature Point), V.Vector (Feature LineString), V.Vector (Feature Polygon))
+features _ _ [] = Left "VectorTile.features: `[R.Feature]` empty"
+features keys vals fs = (,,) <$> ps <*> ls <*> polys
+  where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
+        ps = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.Point) fs
+        ls = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.LineString) fs
+        polys = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.Polygon) fs
 
--- Just constrain for `Geometry` on the functions!
--- foo :: Geometry g => Feature g -> ...
+        f :: Geometry g => R.Feature -> V.Vector (Feature g) -> Either Text (V.Vector (Feature g))
+        f x acc = do
+          geos <- commands (getField $ R.geometries x) >>= fromCommands
+          meta <- getMeta keys vals . getField $ R.tags x
+          pure $ Feature { featureId = maybe 0 fromIntegral . getField $ R.featureId x
+                         , metadata = meta
+                         , geometries = geos
+                         } `V.cons` acc
 
--- | Euclidean distance.
-{-}
-distance :: Point -> Point -> Float
-distance p1 p2 = sqrt . fromIntegral $ dx ^ 2 + dy ^ 2
-  where dx = x p1 - x p2
-        dy = y p1 - y p2
--}
+{- UTIL -}
+
+-- | Bias a `R.Feature` by its `GeomType`. Used for sorting.
+geomBias :: R.Feature -> Int
+geomBias = maybe 0 fromEnum . getField . R.geom
+
+-- | Do two `R.Feature`s have the same `GeomType`?
+sameGeom :: R.Feature -> R.Feature -> Bool
+sameGeom a b = getField (R.geom a) == getField (R.geom b)
+
+getMeta :: [Text] -> [R.Val] -> [Word32] -> Either Text (M.Map Text Val)
+getMeta keys vals tags = do
+  kv <- map (both fromIntegral) <$> pairs tags
+  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (value $ vals !! v)) M.empty kv
+
+-- | Convert a raw `R.Val` parsed from protobuf data into a useable
+-- `Val`. The higher-level `Val` type better expresses the mutual exclusivity
+-- of the value types.
+value :: R.Val -> Either Text Val
+value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $ R.string v)
+  <|> fmap Fl  (getField $ R.float v)
+  <|> fmap Do  (getField $ R.double v)
+  <|> fmap I64 (getField $ R.int64 v)
+  <|> fmap W64 (getField $ R.uint64 v)
+  <|> fmap (\(Signed n) -> S64 n) (getField $ R.sint v)
+  <|> fmap B   (getField $ R.bool v)

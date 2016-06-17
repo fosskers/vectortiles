@@ -10,11 +10,13 @@ import           Data.Hex
 import           Data.ProtocolBuffers
 import           Data.Serialize.Get
 import           Data.Serialize.Put
+import           Data.Text (Text)
 import qualified Geography.VectorTile.Raw as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
 --import qualified Text.ProtocolBuffers.WireMessage as PB
 --import qualified Vector_tile.Tile as VT
+import           Geography.VectorTile
 import           Geography.VectorTile.Geometry
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -39,6 +41,9 @@ suite op ls pl rd = testGroup "Unit Tests"
       , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
 --      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
       , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
+      , testCase "onepoint.mvt -> VectorTile" $ tileDecode op
+      , testCase "linestring.mvt -> VectorTile" $ tileDecode ls
+      , testCase "roads.mvt -> VectorTile" $ tileDecode rd
       ]
     , testGroup "Serialization Isomorphism"
       [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
@@ -86,7 +91,12 @@ testPolygon vt = case decodeIt vt of
 -- | For testing is decoding succeeded in generally. Makes no guarantee
 -- about the quality of the content, only that the parse succeeded.
 testDecode :: BS.ByteString -> Assertion
-testDecode bs = assert . isRight $ decodeIt bs
+testDecode = assert . isRight . decodeIt
+
+tileDecode :: BS.ByteString -> Assertion
+tileDecode bs = case decodeIt bs of
+  Left e -> assertFailure e
+  Right t -> assert . isRight $ tile t
 
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
@@ -260,3 +270,10 @@ polygonIso2 :: Assertion
 polygonIso2 = cs' @?= cs
   where cs = [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15]
         cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Polygon)
+
+{-}
+foo = do
+  mvt <- BS.readFile "roads.mvt"
+  decodeIt mvt >>=
+  undefined
+-}

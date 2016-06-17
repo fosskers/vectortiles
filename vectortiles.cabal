@@ -23,6 +23,7 @@ library
   exposed-modules:     Geography.VectorTile
                      , Geography.VectorTile.Raw
                      , Geography.VectorTile.Geometry
+                     , Geography.VectorTile.Util
 --                     , Vector_tile
 --                     , Vector_tile.Tile
 --                     , Vector_tile.Tile.Feature

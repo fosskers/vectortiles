@@ -4,7 +4,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
@@ -24,6 +23,7 @@ module Geography.VectorTile.Geometry
   -- ** Operations
   , area
   , surveyor
+  , distance
   -- * Commands
   , Command(..)
   , commands
@@ -35,6 +35,7 @@ module Geography.VectorTile.Geometry
 
 import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
+import           Data.Foldable (foldlM)
 import           Data.Int
 import           Data.Monoid
 import           Data.Text (Text,pack)
@@ -42,8 +43,8 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
+import           Geography.VectorTile.Util
 import           Text.Printf.TH
-import           Data.Foldable (foldlM)
 
 ---
 
@@ -59,12 +60,12 @@ instance Monoid Point where
   mempty = Point 0 0
   (Point a b) `mappend` (Point a' b') = Point (a + a') (b + b')
 
--- | `newtype` compiles away to expose only the `U.Vector` of unboxed `Point`s
+-- | /newtype/ compiles away to expose only the `U.Vector` of unboxed `Point`s
 -- at runtime.
-newtype LineString = LineString { points :: U.Vector Point } deriving (Eq,Show)
+newtype LineString = LineString { lsPoints :: U.Vector Point } deriving (Eq,Show)
 
--- | A polygon aware of its inner polygons.
-data Polygon = Polygon { points :: U.Vector Point
+-- | A polygon aware of its interior rings.
+data Polygon = Polygon { polyPoints :: U.Vector Point
                        , inner :: V.Vector Polygon } deriving (Eq,Show)
 
 {-
@@ -75,7 +76,7 @@ newtype Polygon = Polygon { points :: U.Vector Point } deriving (Eq,Show)
 -- | The area of a `Polygon` is the difference between the areas of its
 -- outer ring and inner rings.
 area :: Polygon -> Float
-area p = surveyor (points (p :: Polygon)) + sum (V.map area $ inner p)
+area p = surveyor (polyPoints p) + sum (V.map area $ inner p)
 
 -- | The surveyor's formula for calculating the area of a `Polygon`.
 -- If the value reported here is negative, then the `Polygon` should be
@@ -89,11 +90,17 @@ surveyor v = (/ 2) . fromIntegral . U.sum $ U.zipWith3 (\xn yn yp -> xn * (yn - 
         yns = U.map y . U.tail $ U.snoc v' (U.head v')
         yps = U.map y . U.init $ U.cons (U.last v') v'
 
+-- | Euclidean distance.
+distance :: Point -> Point -> Float
+distance p1 p2 = sqrt . fromIntegral $ dx ^ 2 + dy ^ 2
+  where dx = x p1 - x p2
+        dy = y p1 - y p2
+
 -- | Any classical type considered a GIS "geometry". These must be able
 -- to convert between an encodable list of `Command`s.
-class Geometry a where
-  fromCommands :: [Command] -> Either Text (V.Vector a)
-  toCommands :: V.Vector a -> [Command]
+class Geometry g where
+  fromCommands :: [Command] -> Either Text (V.Vector g)
+  toCommands :: V.Vector g -> [Command]
 
 -- | A valid `R.Feature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
@@ -105,7 +112,6 @@ instance Geometry Point where
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
   toCommands ps = [MoveTo $ evalState (U.mapM collapse $ U.convert ps) (0,0)]
 
--- Need a generalized parser for this, `pipes-parser` might work.
 -- | A valid `R.Feature` of linestrings must contain pairs of:
 --
 -- A `MoveTo` with a count of 1, followed by one `LineTo` command with
@@ -125,7 +131,6 @@ instance Geometry LineString where
             l <- U.mapM collapse t
             pure [MoveTo $ U.singleton (x h - x curr, y h - y curr), LineTo l]
 
--- Need a generalized parser for this.
 -- | A valid `R.Feature` of polygons must contain at least one sequence of:
 --
 -- An Exterior Ring, followed by 0 or more Interior Rings.
@@ -218,15 +223,6 @@ uncommands = U.toList . U.concat . map f
         f ClosePath = U.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
 
 {- UTIL -}
-
-pairs :: [a] -> Either T.Text [(a,a)]
-pairs [] = Right []
-pairs [_] = Left "Uneven number of parameters given."
-pairs (x:y:zs) = ((x,y) :) <$>  pairs zs
-
--- | Apply a pure function to both elements of a tuple.
-both :: (a -> b) -> (a,a) -> (b,b)
-both f (x,y) = (f x, f y)
 
 -- | Transform a `V.Vector` of `Point`s into one of Z-encoded Parameter ints.
 params :: U.Vector (Int,Int) -> U.Vector Word32
