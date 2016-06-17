@@ -1,5 +1,6 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module    : Geography.VectorTile
@@ -31,6 +32,7 @@ module Geography.VectorTile
   ) where
 
 import           Control.Applicative ((<|>))
+import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldrM)
 import           Data.Int
 import           Data.List (sortOn, groupBy)
@@ -43,8 +45,8 @@ import           Data.Word
 import           Geography.VectorTile.Geometry
 import qualified Geography.VectorTile.Raw as R
 import           Geography.VectorTile.Util
+import           GHC.Generics (Generic)
 import           Text.Printf.TH
-
 ---
 
 {- Types -}
@@ -54,7 +56,9 @@ import           Text.Printf.TH
 --
 -- There is potential to implement `layers` as a `M.Map`, with its String-based
 -- `name` as a key.
-newtype VectorTile = VectorTile { layers :: V.Vector Layer } deriving (Eq,Show)
+newtype VectorTile = VectorTile { layers :: V.Vector Layer } deriving (Eq,Show,Generic)
+
+instance NFData VectorTile
 
 -- | A layer.
 data Layer = Layer { version :: Int  -- ^ Foo
@@ -64,7 +68,9 @@ data Layer = Layer { version :: Int  -- ^ Foo
                    , polygons :: V.Vector (Feature Polygon)
                    -- Needed? How to structure Feature-shared metadata?
 --                   , keys :: V.Vector Text
-                   , extent :: Int } deriving (Eq,Show)
+                   , extent :: Int } deriving (Eq,Show,Generic)
+
+instance NFData Layer
 
 -- | A geographic feature. Features are a set of geometries that share
 -- some common theme:
@@ -78,11 +84,15 @@ data Layer = Layer { version :: Int  -- ^ Foo
 -- else.
 data Feature g = Feature { featureId :: Int
                          , metadata :: M.Map Text Val
-                         , geometries :: V.Vector g } deriving (Eq,Show)
+                         , geometries :: V.Vector g } deriving (Eq,Show,Generic)
+
+instance NFData g => NFData (Feature g)
 
 -- | Legal Metadata Value types.
 data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
-         deriving (Eq,Show)
+         deriving (Eq,Show,Generic)
+
+instance NFData Val
 
 -- | Convert a raw `R.VectorTile` of parsed protobuf data into a useable
 -- `VectorTile`.
@@ -102,7 +112,6 @@ layer l = do
              , extent = maybe 4096 fromIntegral (getField $ R.extent l) }
   where keys = getField $ R.keys l
         vals = getField $ R.values l
-
 
 -- | Convert a list of raw `R.Feature` of parsed protobuf data into `V.Vector`s
 -- of each of the three legal `Geometry` types.

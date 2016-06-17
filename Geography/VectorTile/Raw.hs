@@ -1,7 +1,6 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 -- |
 -- Module    : Geography.VectorTile.Raw
@@ -22,14 +21,27 @@
 --
 -- > import qualified Geography.VectorTile.Raw as R
 
-module Geography.VectorTile.Raw where
+module Geography.VectorTile.Raw
+  ( -- * Types
+    VectorTile(..)
+  , Layer(..)
+  , Val(..)
+  , Feature(..)
+  , GeomType(..)
+    -- * IO
+  , decode
+  , encode
+  ) where
 
-import Control.DeepSeq (NFData)
-import Data.Int
-import Data.ProtocolBuffers
-import Data.Text (Text)
-import Data.Word
-import GHC.Generics (Generic)
+import           Control.DeepSeq (NFData)
+import qualified Data.ByteString as BS
+import           Data.Int
+import           Data.ProtocolBuffers hiding (decode, encode)
+import           Data.Serialize.Get
+import           Data.Serialize.Put
+import           Data.Text (Text, pack)
+import           Data.Word
+import           GHC.Generics (Generic)
 
 ---
 
@@ -88,3 +100,13 @@ data GeomType = Unknown | Point | LineString | Polygon
 instance Encode GeomType
 instance Decode GeomType
 instance NFData GeomType
+
+{- IO -}
+
+decode :: BS.ByteString -> Either Text VectorTile
+decode bs = case runGet decodeMessage bs of
+  Left e -> Left $ pack e
+  Right vt -> Right vt
+
+encode :: VectorTile -> BS.ByteString
+encode = runPut . encodeMessage

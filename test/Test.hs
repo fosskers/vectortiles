@@ -5,20 +5,15 @@
 module Main where
 
 import qualified Data.ByteString as BS
---import qualified Data.ByteString.Lazy as BSL
 import           Data.Hex
 import           Data.ProtocolBuffers
 import           Data.Serialize.Get
 import           Data.Serialize.Put
-import           Data.Text (Text)
 import qualified Geography.VectorTile.Raw as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
---import qualified Text.ProtocolBuffers.WireMessage as PB
---import qualified Vector_tile.Tile as VT
 import           Geography.VectorTile
 import           Geography.VectorTile.Geometry
-import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
 ---
@@ -272,8 +267,10 @@ polygonIso2 = cs' @?= cs
         cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Polygon)
 
 {-}
-foo = do
-  mvt <- BS.readFile "roads.mvt"
-  decodeIt mvt >>=
-  undefined
+foo :: FilePath -> IO (Either Text VectorTile)
+foo bs = do
+  mvt <- BS.readFile bs
+  pure $ R.decode mvt >>= tile
+
+-- fmap (V.length . layers <$>) $ foo "roads.mvt"
 -}

@@ -6,6 +6,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module    : Geography.VectorTile.Geometry
@@ -33,6 +34,7 @@ module Geography.VectorTile.Geometry
   , unzig
   ) where
 
+import           Control.DeepSeq (NFData)
 import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
 import           Data.Foldable (foldlM)
@@ -43,6 +45,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
+import           GHC.Generics (Generic)
 import           Geography.VectorTile.Util
 import           Text.Printf.TH
 
@@ -62,11 +65,15 @@ instance Monoid Point where
 
 -- | /newtype/ compiles away to expose only the `U.Vector` of unboxed `Point`s
 -- at runtime.
-newtype LineString = LineString { lsPoints :: U.Vector Point } deriving (Eq,Show)
+newtype LineString = LineString { lsPoints :: U.Vector Point } deriving (Eq,Show,Generic)
+
+instance NFData LineString
 
 -- | A polygon aware of its interior rings.
 data Polygon = Polygon { polyPoints :: U.Vector Point
-                       , inner :: V.Vector Polygon } deriving (Eq,Show)
+                       , inner :: V.Vector Polygon } deriving (Eq,Show,Generic)
+
+instance NFData Polygon
 
 {-
 -- | Very performant for the same reason as `LineString`.
