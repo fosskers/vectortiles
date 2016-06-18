@@ -52,18 +52,16 @@ import           Control.Applicative ((<|>))
 import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldrM)
 import           Data.Int
-import           Data.List (sortOn, groupBy)
 import qualified Data.Map.Lazy as M
 import           Data.ProtocolBuffers
 import           Data.Text (Text,pack)
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import           Geography.VectorTile.Geometry
 import qualified Geography.VectorTile.Raw as R
 import           Geography.VectorTile.Util
 import           GHC.Generics (Generic)
-import           Text.Printf.TH
+
 ---
 
 {- Types -}
@@ -153,9 +151,9 @@ features :: [Text] -> [R.Val] -> [R.Feature]
 features _ _ [] = Left "VectorTile.features: `[R.Feature]` empty"
 features keys vals fs = (,,) <$> ps <*> ls <*> polys
   where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
-        ps = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.Point) fs
-        ls = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.LineString) fs
-        polys = foldrM f V.empty $ filter (\f -> getField (R.geom f) == Just R.Polygon) fs
+        ps = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.Point) fs
+        ls = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.LineString) fs
+        polys = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.Polygon) fs
 
         f :: Geometry g => R.Feature -> V.Vector (Feature g) -> Either Text (V.Vector (Feature g))
         f x acc = do
@@ -179,14 +177,6 @@ value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $
   <|> fmap B   (getField $ R.bool v)
 
 {- UTIL -}
-
--- | Bias a `R.Feature` by its `GeomType`. Used for sorting.
-geomBias :: R.Feature -> Int
-geomBias = maybe 0 fromEnum . getField . R.geom
-
--- | Do two `R.Feature`s have the same `GeomType`?
-sameGeom :: R.Feature -> R.Feature -> Bool
-sameGeom a b = getField (R.geom a) == getField (R.geom b)
 
 getMeta :: [Text] -> [R.Val] -> [Word32] -> Either Text (M.Map Text Val)
 getMeta keys vals tags = do

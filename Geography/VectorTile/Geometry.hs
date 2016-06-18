@@ -40,7 +40,7 @@ import           Data.Bits
 import           Data.Foldable (foldlM)
 import           Data.Int
 import           Data.Monoid
-import           Data.Text (Text,pack)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
