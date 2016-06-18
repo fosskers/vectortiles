@@ -15,6 +15,12 @@
 --
 -- Note that currently this library ignores top-level protobuf extensions,
 -- /Value/ extensions, and /UNKNOWN/ geometries.
+--
+-- The order in which to explore the modules of this library is as follows:
+--
+-- 1. "Geography.VectorTile" (here)
+-- 2. "Geography.VectorTile.Geometry"
+-- 3. "Geography.VectorTile.Raw"
 
 module Geography.VectorTile
   ( -- * Types
@@ -22,8 +28,19 @@ module Geography.VectorTile
   , Layer(..)
   , Feature(..)
   , Val(..)
-    -- * Conversions
+    -- * Protobuf Conversions
     -- ** From Protobuf
+    -- | Generally the `tile` function is the only one needed here. Usage:
+    --
+    -- > import qualified Geography.VectorTile.Raw as R
+    -- >
+    -- > R.decode someBytes >>= tile
+    --
+    -- Note that since the "Data.ProtocolBuffers" library does not handle default
+    -- values, we handle those specifically defined in /vector_tile.proto/
+    -- explicitely here. See:
+    --
+    -- https://github.com/mapbox/vector-tile-spec/blob/master/2.1/vector_tile.proto
   , tile
   , layer
   , features
@@ -60,15 +77,16 @@ newtype VectorTile = VectorTile { layers :: V.Vector Layer } deriving (Eq,Show,G
 
 instance NFData VectorTile
 
--- | A layer.
-data Layer = Layer { version :: Int  -- ^ Foo
+-- | A layer, which could contain any number of `Feature`s of any `Geometry` type.
+-- This codec only respects the canonical three `Geometry` types, and we split
+-- them here explicitely to allow for more fine-grained access to each type.
+data Layer = Layer { version :: Int  -- ^ The version of the spec we follow. Should always be 2.
                    , name :: Text
                    , points :: V.Vector (Feature Point)
                    , linestrings :: V.Vector (Feature LineString)
                    , polygons :: V.Vector (Feature Polygon)
-                   -- Needed? How to structure Feature-shared metadata?
---                   , keys :: V.Vector Text
-                   , extent :: Int } deriving (Eq,Show,Generic)
+                   , extent :: Int  -- ^ Default: 4096
+                   } deriving (Eq,Show,Generic)
 
 instance NFData Layer
 
@@ -82,13 +100,17 @@ instance NFData Layer
 -- Where, for instance, all school locations may be stored as a single
 -- `Feature`, and no `Point` within that `Feature` would represent anything
 -- else.
-data Feature g = Feature { featureId :: Int
+--
+-- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
+-- the same thing, as a `V.Vector` of that `Geometry`.
+data Feature g = Feature { featureId :: Int  -- ^ Default: 0
                          , metadata :: M.Map Text Val
                          , geometries :: V.Vector g } deriving (Eq,Show,Generic)
 
 instance NFData g => NFData (Feature g)
 
--- | Legal Metadata Value types.
+-- | Legal Metadata /Value/ types. Note that `S64` are Z-encoded automatically
+-- by the underlying "Data.ProtocolBuffers" library.
 data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
          deriving (Eq,Show,Generic)
 
@@ -113,8 +135,19 @@ layer l = do
   where keys = getField $ R.keys l
         vals = getField $ R.values l
 
--- | Convert a list of raw `R.Feature` of parsed protobuf data into `V.Vector`s
+-- | Convert a list of raw `R.Feature`s of parsed protobuf data into `V.Vector`s
 -- of each of the three legal `Geometry` types.
+--
+-- The long type signature is due to the fact that `R.Layer`s and `R.Feature`s
+-- are strongly coupled at the protobuf level. In order to achieve higher
+-- compression ratios, `R.Layer`s contain all metadata in key/value lists
+-- to be shared across their `R.Feature`s, while those `R.Feature`s store only
+-- indexes into those lists. As a result, this function needs to be passed
+-- those key/value lists from the parent `R.Layer`, and a more isomorphic:
+--
+-- > feature :: Geometry g => R.Feature -> Either Text (Feature g)
+--
+-- is not possible.
 features :: [Text] -> [R.Val] -> [R.Feature]
   -> Either Text (V.Vector (Feature Point), V.Vector (Feature LineString), V.Vector (Feature Polygon))
 features _ _ [] = Left "VectorTile.features: `[R.Feature]` empty"
@@ -133,6 +166,18 @@ features keys vals fs = (,,) <$> ps <*> ls <*> polys
                          , geometries = geos
                          } `V.cons` acc
 
+-- | Convert a raw `R.Val` parsed from protobuf data into a useable
+-- `Val`. The higher-level `Val` type better expresses the mutual exclusivity
+-- of the /Value/ types.
+value :: R.Val -> Either Text Val
+value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $ R.string v)
+  <|> fmap Fl  (getField $ R.float v)
+  <|> fmap Do  (getField $ R.double v)
+  <|> fmap I64 (getField $ R.int64 v)
+  <|> fmap W64 (getField $ R.uint64 v)
+  <|> fmap (\(Signed n) -> S64 n) (getField $ R.sint v)
+  <|> fmap B   (getField $ R.bool v)
+
 {- UTIL -}
 
 -- | Bias a `R.Feature` by its `GeomType`. Used for sorting.
@@ -147,15 +192,3 @@ getMeta :: [Text] -> [R.Val] -> [Word32] -> Either Text (M.Map Text Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (value $ vals !! v)) M.empty kv
-
--- | Convert a raw `R.Val` parsed from protobuf data into a useable
--- `Val`. The higher-level `Val` type better expresses the mutual exclusivity
--- of the value types.
-value :: R.Val -> Either Text Val
-value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $ R.string v)
-  <|> fmap Fl  (getField $ R.float v)
-  <|> fmap Do  (getField $ R.double v)
-  <|> fmap I64 (getField $ R.int64 v)
-  <|> fmap W64 (getField $ R.uint64 v)
-  <|> fmap (\(Signed n) -> S64 n) (getField $ R.sint v)
-  <|> fmap B   (getField $ R.bool v)

@@ -28,9 +28,11 @@ module Geography.VectorTile.Raw
   , Val(..)
   , Feature(..)
   , GeomType(..)
-    -- * IO
+    -- * Encoding / Decoding
   , decode
   , encode
+  , decodeIO
+  , encodeIO
   ) where
 
 import           Control.DeepSeq (NFData)
@@ -101,12 +103,22 @@ instance Encode GeomType
 instance Decode GeomType
 instance NFData GeomType
 
-{- IO -}
-
+-- | Attempt to decode a `BS.ByteString` of raw protobuf data into a mid-level
+-- representation of a `VectorTile`.
 decode :: BS.ByteString -> Either Text VectorTile
 decode bs = case runGet decodeMessage bs of
   Left e -> Left $ pack e
   Right vt -> Right vt
 
+-- | Encode a mid-level representation of a `VectorTile` into raw protobuf data.
 encode :: VectorTile -> BS.ByteString
 encode = runPut . encodeMessage
+
+-- | Given a filename, attempt to decode bytes read from that file.
+decodeIO :: FilePath -> IO (Either Text VectorTile)
+decodeIO = fmap decode . BS.readFile
+
+-- | Write a mid-level representation of a `VectorTile` to a file as raw
+-- protobuf data.
+encodeIO :: VectorTile -> FilePath -> IO ()
+encodeIO vt fp = BS.writeFile fp $ encode vt
