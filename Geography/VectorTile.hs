@@ -46,6 +46,18 @@ module Geography.VectorTile
   , features
   , value
     -- ** To Protobuf
+    -- | To convert from high-level data back into a form that can be encoded
+    -- into raw protobuf bytes, use:
+    --
+    -- > import qualified Geography.VectorTile.Raw as R
+    -- >
+    -- > encode $ untile someTile
+    --
+    -- This is a pure process and will succeed every time.
+  , untile
+  , unlayer
+  , unfeatures
+  , unval
   ) where
 
 import           Control.Applicative ((<|>))
@@ -178,9 +190,50 @@ value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $
   <|> fmap (\(Signed n) -> S64 n) (getField $ R.sint v)
   <|> fmap B   (getField $ R.bool v)
 
-{- UTIL -}
-
-getMeta :: [Text] -> [R.Val] -> [Word32] -> Either Text (M.Map Text Val)
+getMeta :: [Text] -> [R.RawVal] -> [Word32] -> Either Text (M.Map Text Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (value $ vals !! v)) M.empty kv
+
+{- TO PROTOBUF -}
+
+-- | Encode a high-level `VectorTile` back into its mid-level
+-- `R.RawVectorTile` form.
+untile :: VectorTile -> R.RawVectorTile
+untile vt = R.RawVectorTile { R.layers = putField . V.toList . V.map unlayer $ layers vt }
+
+-- Has to get back all its metadata from its features
+-- | Encode a high-level `Layer` back into its mid-level `R.RawLayer` form.
+unlayer :: Layer -> R.RawLayer
+unlayer l = R.RawLayer { R.version = putField . fromIntegral $ version l
+                       , R.name = putField $ name l
+                       , R.features = putField fs
+                       , R.keys = putField ks
+                       , R.values = putField vs
+                       , R.extent = putField . Just . fromIntegral $ extent l }
+  where (fs,ks,vs) = unfeatures (points l) (linestrings l) (polygons l)
+
+-- | Encode lists of high-level `Feature`s back into their mid-level
+-- `R.RawFeature` form, while also yielding their collective metadata
+-- for the parent `R.RawLayer`.
+unfeatures ps ls polys = undefined :: ([R.RawFeature],[Text],[R.RawVal])
+
+-- | Encode a high-level `Val` back into its mid-level `R.RawVal` form.
+unval :: Val -> R.RawVal
+unval (St v)  = def { R.string = putField $ Just v }
+unval (Fl v)  = def { R.float = putField $ Just v }
+unval (Do v)  = def { R.double = putField $ Just v }
+unval (I64 v) = def { R.int64 = putField $ Just v }
+unval (W64 v) = def { R.uint64 = putField $ Just v }
+unval (S64 v) = def { R.sint = putField . Just $ Signed v }
+unval (B v)   = def { R.bool = putField $ Just v }
+
+-- | A `R.RawVal` with every entry set to `Nothing`.
+def :: R.RawVal
+def = R.RawVal { R.string = putField Nothing
+               , R.float  = putField Nothing
+               , R.double = putField Nothing
+               , R.int64  = putField Nothing
+               , R.uint64 = putField Nothing
+               , R.sint   = putField Nothing
+               , R.bool   = putField Nothing }
