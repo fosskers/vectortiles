@@ -47,15 +47,6 @@ suite op ls pl rd = testGroup "Unit Tests"
       --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
       , testCase "testTile <-> protobuf bytes" testTileIso
       ]
---    , testGroup "Testing auto-generated code"
---      [ testCase "onepoint.mvt <-> VT.Tile" $ pbRawIso op
---      , testCase "linestring.mvt <-> VT.Tile" $ pbRawIso ls
---      , testCase "polygon.mvt <-> VT.Tile" $ pbRawIso pl
---      ]
---    , testGroup "Cross-codec Isomorphisms"
---      [ testCase "ByteStrings only" crossCodecIso1
---      , testCase "Full encode/decode" crossCodecIso
---      ]
     ]
   , testGroup "Geometries"
     [ testCase "Z-encoding Isomorphism" zencoding
@@ -107,39 +98,11 @@ testTileIso = case decodeIt pb of
                  Left e -> assertFailure e
   where pb = encodeIt testTile
 
-{-
-pbRawIso :: BS.ByteString -> Assertion
-pbRawIso vt = case pbIso vt of
-                Right vt' -> assertEqual "" (hex vt) (hex vt')
-                Left e -> assertFailure e
-
--- | Can an `R.VectorTile` be converted to a `Vector_tile.Tile` and back?
-crossCodecIso :: Assertion
-crossCodecIso = case pbIso (encodeIt testTile) >>= decodeIt of
-                  Left e -> assertFailure e
-                  Right t -> t @?= testTile
-
--- | Will just their `ByteString` forms match?
-crossCodecIso1 :: Assertion
-crossCodecIso1 = case pbIso vt of
-                  Left e -> assertFailure e
-                  Right t -> hex t @?= hex vt
-  where vt = encodeIt testTile
-
--- | Isomorphism for Vector_tile.Tile
-pbIso :: BS.ByteString -> Either String BS.ByteString
-pbIso (BSL.fromStrict -> vt) = do
-   (t,_) <- PB.messageGet @VT.Tile vt
-   pure . BSL.toStrict $ PB.messagePut @VT.Tile t
--}
-
-decodeIt :: BS.ByteString -> Either String R.VectorTile
+decodeIt :: BS.ByteString -> Either String R.RawVectorTile
 decodeIt = runGet decodeMessage
 
-encodeIt :: R.VectorTile -> BS.ByteString
+encodeIt :: R.RawVectorTile -> BS.ByteString
 encodeIt = runPut . encodeMessage
-
-{- UTIL -}
 
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -149,86 +112,81 @@ fromRight :: Either a b -> b
 fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
 
-rawTest :: IO (Either String R.VectorTile)
+rawTest :: IO (Either String R.RawVectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
-{-}
-pbRawTest :: IO (Either String VT.Tile)
-pbRawTest = fmap fst . PB.messageGet . BSL.fromStrict <$> BS.readFile "roads.mvt"
--}
-
-testTile :: R.VectorTile
-testTile = R.VectorTile $ putField [l]
-  where l = R.Layer { R.version = putField 2
-                    , R.name = putField "testlayer"
-                    , R.features = putField [f]
-                    , R.keys = putField ["somekey"]
-                    , R.values = putField [v]
-                    , R.extent = putField $ Just 4096
-                    }
-        f = R.Feature { R.featureId = putField $ Just 0
-                      , R.tags = putField [0,0]
-                      , R.geom = putField $ Just R.Point
-                      , R.geometries = putField [9, 50, 34]  -- MoveTo(+25,+17)
-                      }
-        v = R.Val { R.string = putField $ Just "Some Value"
-                  , R.float = putField Nothing
-                  , R.double = putField Nothing
-                  , R.int64 = putField Nothing
-                  , R.uint64 = putField Nothing
-                  , R.sint = putField Nothing
-                  , R.bool = putField Nothing
-                  }
+testTile :: R.RawVectorTile
+testTile = R.RawVectorTile $ putField [l]
+  where l = R.RawLayer { R.version = putField 2
+                       , R.name = putField "testlayer"
+                       , R.features = putField [f]
+                       , R.keys = putField ["somekey"]
+                       , R.values = putField [v]
+                       , R.extent = putField $ Just 4096
+                       }
+        f = R.RawFeature { R.featureId = putField $ Just 0
+                         , R.tags = putField [0,0]
+                         , R.geom = putField $ Just R.Point
+                         , R.geometries = putField [9, 50, 34]  -- MoveTo(+25,+17)
+                         }
+        v = R.RawVal { R.string = putField $ Just "Some Value"
+                     , R.float = putField Nothing
+                     , R.double = putField Nothing
+                     , R.int64 = putField Nothing
+                     , R.uint64 = putField Nothing
+                     , R.sint = putField Nothing
+                     , R.bool = putField Nothing
+                     }
 
 -- | Correct decoding of `onepoint.mvt`
-onePoint :: R.VectorTile
-onePoint = R.VectorTile $ putField [l]
-  where l = R.Layer { R.version = putField 1
-                    , R.name = putField "OnePoint"
-                    , R.features = putField [f]
-                    , R.keys = putField []
-                    , R.values = putField []
-                    , R.extent = putField $ Just 4096
-                    }
-        f = R.Feature { R.featureId = putField Nothing
-                      , R.tags = putField []
-                      , R.geom = putField $ Just R.Point
-                      , R.geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
-                      }
+onePoint :: R.RawVectorTile
+onePoint = R.RawVectorTile $ putField [l]
+  where l = R.RawLayer { R.version = putField 1
+                       , R.name = putField "OnePoint"
+                       , R.features = putField [f]
+                       , R.keys = putField []
+                       , R.values = putField []
+                       , R.extent = putField $ Just 4096
+                       }
+        f = R.RawFeature { R.featureId = putField Nothing
+                         , R.tags = putField []
+                         , R.geom = putField $ Just R.Point
+                         , R.geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
+                         }
 
 -- | Correct decoding of `linestring.mvt`
-oneLineString :: R.VectorTile
-oneLineString = R.VectorTile $ putField [l]
-  where l = R.Layer { R.version = putField 1
-                    , R.name = putField "OneLineString"
-                    , R.features = putField [f]
-                    , R.keys = putField []
-                    , R.values = putField []
-                    , R.extent = putField $ Just 4096
-                    }
-        f = R.Feature { R.featureId = putField Nothing
-                      , R.tags = putField []
-                      , R.geom = putField $ Just R.LineString
-                      -- MoveTo(+5,+5), LineTo(+1195,+1195)
-                      , R.geometries = putField [9, 10, 10, 10, 2390, 2390]
-                      }
+oneLineString :: R.RawVectorTile
+oneLineString = R.RawVectorTile $ putField [l]
+  where l = R.RawLayer { R.version = putField 1
+                       , R.name = putField "OneLineString"
+                       , R.features = putField [f]
+                       , R.keys = putField []
+                       , R.values = putField []
+                       , R.extent = putField $ Just 4096
+                       }
+        f = R.RawFeature { R.featureId = putField Nothing
+                         , R.tags = putField []
+                         , R.geom = putField $ Just R.LineString
+                         -- MoveTo(+5,+5), LineTo(+1195,+1195)
+                         , R.geometries = putField [9, 10, 10, 10, 2390, 2390]
+                         }
 
 -- | Correct decoding of `polygon.mvt`
-onePolygon :: R.VectorTile
-onePolygon = R.VectorTile $ putField [l]
-  where l = R.Layer { R.version = putField 1
-                    , R.name = putField "OnePolygon"
-                    , R.features = putField [f]
-                    , R.keys = putField []
-                    , R.values = putField []
-                    , R.extent = putField $ Just 4096
-                    }
-        f = R.Feature { R.featureId = putField Nothing
-                      , R.tags = putField []
-                      , R.geom = putField $ Just R.Polygon
-                      -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
-                      , R.geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
-                      }
+onePolygon :: R.RawVectorTile
+onePolygon = R.RawVectorTile $ putField [l]
+  where l = R.RawLayer { R.version = putField 1
+                       , R.name = putField "OnePolygon"
+                       , R.features = putField [f]
+                       , R.keys = putField []
+                       , R.values = putField []
+                       , R.extent = putField $ Just 4096
+                       }
+        f = R.RawFeature { R.featureId = putField Nothing
+                         , R.tags = putField []
+                         , R.geom = putField $ Just R.Polygon
+                         -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
+                         , R.geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
+                         }
 
 zencoding :: Assertion
 zencoding = assert $ map (unzig . zig) vs @?= vs

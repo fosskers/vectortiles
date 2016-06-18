@@ -114,14 +114,16 @@ data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 |
 
 instance NFData Val
 
--- | Convert a raw `R.VectorTile` of parsed protobuf data into a useable
+{- FROM PROTOBUF -}
+
+-- | Convert a `R.RawVectorTile` of parsed protobuf data into a useable
 -- `VectorTile`.
-tile :: R.VectorTile -> Either Text VectorTile
+tile :: R.RawVectorTile -> Either Text VectorTile
 tile = fmap (VectorTile . V.fromList) . mapM layer . getField . R.layers
 
--- | Convert a single raw `R.Layer` of parsed protobuf data into a useable
+-- | Convert a single `R.RawLayer` of parsed protobuf data into a useable
 -- `Layer`.
-layer :: R.Layer -> Either Text Layer
+layer :: R.RawLayer -> Either Text Layer
 layer l = do
   (ps,ls,polys) <- features keys vals . getField $ R.features l
   pure Layer { version = fromIntegral . getField $ R.version l
@@ -133,29 +135,29 @@ layer l = do
   where keys = getField $ R.keys l
         vals = getField $ R.values l
 
--- | Convert a list of raw `R.Feature`s of parsed protobuf data into `V.Vector`s
+-- | Convert a list of `R.RawFeature`s of parsed protobuf data into `V.Vector`s
 -- of each of the three legal `Geometry` types.
 --
--- The long type signature is due to the fact that `R.Layer`s and `R.Feature`s
+-- The long type signature is due to the fact that `R.RawLayer`s and `R.RawFeature`s
 -- are strongly coupled at the protobuf level. In order to achieve higher
--- compression ratios, `R.Layer`s contain all metadata in key/value lists
--- to be shared across their `R.Feature`s, while those `R.Feature`s store only
+-- compression ratios, `R.RawLayer`s contain all metadata in key/value lists
+-- to be shared across their `R.RawFeature`s, while those `R.RawFeature`s store only
 -- indexes into those lists. As a result, this function needs to be passed
--- those key/value lists from the parent `R.Layer`, and a more isomorphic:
+-- those key/value lists from the parent `R.RawLayer`, and a more isomorphic:
 --
--- > feature :: Geometry g => R.Feature -> Either Text (Feature g)
+-- > feature :: Geometry g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-features :: [Text] -> [R.Val] -> [R.Feature]
+features :: [Text] -> [R.RawVal] -> [R.RawFeature]
   -> Either Text (V.Vector (Feature Point), V.Vector (Feature LineString), V.Vector (Feature Polygon))
-features _ _ [] = Left "VectorTile.features: `[R.Feature]` empty"
+features _ _ [] = Left "VectorTile.features: `[R.RawFeature]` empty"
 features keys vals fs = (,,) <$> ps <*> ls <*> polys
   where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
         ps = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.Point) fs
         ls = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.LineString) fs
         polys = foldrM f V.empty $ filter (\fe -> getField (R.geom fe) == Just R.Polygon) fs
 
-        f :: Geometry g => R.Feature -> V.Vector (Feature g) -> Either Text (V.Vector (Feature g))
+        f :: Geometry g => R.RawFeature -> V.Vector (Feature g) -> Either Text (V.Vector (Feature g))
         f x acc = do
           geos <- commands (getField $ R.geometries x) >>= fromCommands
           meta <- getMeta keys vals . getField $ R.tags x
@@ -164,10 +166,10 @@ features keys vals fs = (,,) <$> ps <*> ls <*> polys
                          , geometries = geos
                          } `V.cons` acc
 
--- | Convert a raw `R.Val` parsed from protobuf data into a useable
+-- | Convert a `R.RawVal` parsed from protobuf data into a useable
 -- `Val`. The higher-level `Val` type better expresses the mutual exclusivity
 -- of the /Value/ types.
-value :: R.Val -> Either Text Val
+value :: R.RawVal -> Either Text Val
 value v = mtoe "Value decode: No legal Value type offered" $ fmap St (getField $ R.string v)
   <|> fmap Fl  (getField $ R.float v)
   <|> fmap Do  (getField $ R.double v)

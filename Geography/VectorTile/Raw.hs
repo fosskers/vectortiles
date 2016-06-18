@@ -23,10 +23,10 @@
 
 module Geography.VectorTile.Raw
   ( -- * Types
-    VectorTile(..)
-  , Layer(..)
-  , Val(..)
-  , Feature(..)
+    RawVectorTile(..)
+  , RawLayer(..)
+  , RawVal(..)
+  , RawFeature(..)
   , GeomType(..)
     -- * Encoding / Decoding
   , decode
@@ -47,52 +47,52 @@ import           GHC.Generics (Generic)
 
 ---
 
--- | A list of `Layer`s.
-data VectorTile = VectorTile { layers :: Repeated 3 (Message Layer) }
-                deriving (Generic,Show,Eq)
+-- | A list of `RawLayer`s.
+data RawVectorTile = RawVectorTile { layers :: Repeated 3 (Message RawLayer) }
+                   deriving (Generic,Show,Eq)
 
-instance Encode VectorTile
-instance Decode VectorTile
-instance NFData VectorTile
+instance Encode RawVectorTile
+instance Decode RawVectorTile
+instance NFData RawVectorTile
 
--- | Contains a pseudo-map of metadata, to be shared across all `Feature`s
--- of this `Layer`.
-data Layer = Layer { version :: Required 15 (Value Word32)
-                   , name :: Required 1 (Value Text)
-                   , features :: Repeated 2 (Message Feature)
-                   , keys :: Repeated 3 (Value Text)
-                   , values :: Repeated 4 (Message Val)
-                   , extent :: Optional 5 (Value Word32)
-                   } deriving (Generic,Show,Eq)
+-- | Contains a pseudo-map of metadata, to be shared across all `RawFeature`s
+-- of this `RawLayer`.
+data RawLayer = RawLayer { version :: Required 15 (Value Word32)
+                         , name :: Required 1 (Value Text)
+                         , features :: Repeated 2 (Message RawFeature)
+                         , keys :: Repeated 3 (Value Text)
+                         , values :: Repeated 4 (Message RawVal)
+                         , extent :: Optional 5 (Value Word32)
+                         } deriving (Generic,Show,Eq)
 
-instance Encode Layer
-instance Decode Layer
-instance NFData Layer
+instance Encode RawLayer
+instance Decode RawLayer
+instance NFData RawLayer
 
 -- | The /Value/ types of metadata fields.
-data Val = Val { string :: Optional 1 (Value Text)
-               , float :: Optional 2 (Value Float)
-               , double :: Optional 3 (Value Double)
-               , int64 :: Optional 4 (Value Int64)
-               , uint64 :: Optional 5 (Value Word64)
-               , sint :: Optional 6 (Value (Signed Int64))  -- ^ Z-encoded.
-               , bool :: Optional 7 (Value Bool)
-               } deriving (Generic,Show,Eq)
+data RawVal = RawVal { string :: Optional 1 (Value Text)
+                     , float :: Optional 2 (Value Float)
+                     , double :: Optional 3 (Value Double)
+                     , int64 :: Optional 4 (Value Int64)
+                     , uint64 :: Optional 5 (Value Word64)
+                     , sint :: Optional 6 (Value (Signed Int64))  -- ^ Z-encoded.
+                     , bool :: Optional 7 (Value Bool)
+                     } deriving (Generic,Show,Eq)
 
-instance Encode Val
-instance Decode Val
-instance NFData Val
+instance Encode RawVal
+instance Decode RawVal
+instance NFData RawVal
 
 -- | A set of geometries unified by some theme.
-data Feature = Feature { featureId :: Optional 1 (Value Word64)
-                       , tags :: Packed 2 (Value Word32)
-                       , geom :: Optional 3 (Enumeration GeomType)
-                       , geometries :: Packed 4 (Value Word32)
-                       } deriving (Generic,Show,Eq)
+data RawFeature = RawFeature { featureId :: Optional 1 (Value Word64)
+                             , tags :: Packed 2 (Value Word32)
+                             , geom :: Optional 3 (Enumeration GeomType)
+                             , geometries :: Packed 4 (Value Word32)
+                             } deriving (Generic,Show,Eq)
 
-instance Encode Feature
-instance Decode Feature
-instance NFData Feature
+instance Encode RawFeature
+instance Decode RawFeature
+instance NFData RawFeature
 
 -- | The four potential Geometry types. The spec allows for encoders to set
 -- `Unknown` as the type, but our decoder ignores these.
@@ -104,21 +104,21 @@ instance Decode GeomType
 instance NFData GeomType
 
 -- | Attempt to decode a `BS.ByteString` of raw protobuf data into a mid-level
--- representation of a `VectorTile`.
-decode :: BS.ByteString -> Either Text VectorTile
+-- representation of a `RawVectorTile`.
+decode :: BS.ByteString -> Either Text RawVectorTile
 decode bs = case runGet decodeMessage bs of
   Left e -> Left $ pack e
   Right vt -> Right vt
 
--- | Encode a mid-level representation of a `VectorTile` into raw protobuf data.
-encode :: VectorTile -> BS.ByteString
+-- | Encode a mid-level representation of a `RawVectorTile` into raw protobuf data.
+encode :: RawVectorTile -> BS.ByteString
 encode = runPut . encodeMessage
 
 -- | Given a filename, attempt to decode bytes read from that file.
-decodeIO :: FilePath -> IO (Either Text VectorTile)
+decodeIO :: FilePath -> IO (Either Text RawVectorTile)
 decodeIO = fmap decode . BS.readFile
 
--- | Write a mid-level representation of a `VectorTile` to a file as raw
+-- | Write a mid-level representation of a `RawVectorTile` to a file as raw
 -- protobuf data.
-encodeIO :: VectorTile -> FilePath -> IO ()
+encodeIO :: RawVectorTile -> FilePath -> IO ()
 encodeIO vt fp = BS.writeFile fp $ encode vt
