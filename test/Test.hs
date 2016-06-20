@@ -9,7 +9,7 @@ import           Data.Hex
 import           Data.ProtocolBuffers
 import           Data.Serialize.Get
 import           Data.Serialize.Put
-import qualified Geography.VectorTile.Raw as R
+import qualified Geography.VectorTile.Protobuf as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Geography.VectorTile
@@ -90,7 +90,7 @@ testDecode = assert . isRight . decodeIt
 tileDecode :: BS.ByteString -> Assertion
 tileDecode bs = case decodeIt bs of
   Left e -> assertFailure e
-  Right t -> assert . isRight $ tile t
+  Right t -> assert . isRight $ R.tile t
 
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
@@ -124,116 +124,116 @@ rawTest :: IO (Either String R.RawVectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
 encodeIso :: R.RawVectorTile -> Assertion
-encodeIso vt = assert . isRight . fmap untile $ tile vt
+encodeIso vt = assert . isRight . fmap R.untile $ R.tile vt
 
 testTile :: R.RawVectorTile
 testTile = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R.version = putField 2
-                       , R.name = putField "testlayer"
-                       , R.features = putField [f]
-                       , R.keys = putField ["somekey"]
-                       , R.values = putField [v]
-                       , R.extent = putField $ Just 4096
+  where l = R.RawLayer { R._version = putField 2
+                       , R._name = putField "testlayer"
+                       , R._features = putField [f]
+                       , R._keys = putField ["somekey"]
+                       , R._values = putField [v]
+                       , R._extent = putField $ Just 4096
                        }
-        f = R.RawFeature { R.featureId = putField $ Just 0
-                         , R.tags = putField [0,0]
-                         , R.geom = putField $ Just R.Point
-                         , R.geometries = putField [9, 50, 34]  -- MoveTo(+25,+17)
+        f = R.RawFeature { R._featureId = putField $ Just 0
+                         , R._tags = putField [0,0]
+                         , R._geom = putField $ Just R.Point
+                         , R._geometries = putField [9, 50, 34]  -- MoveTo(+25,+17)
                          }
-        v = R.RawVal { R.string = putField $ Just "Some Value"
-                     , R.float = putField Nothing
-                     , R.double = putField Nothing
-                     , R.int64 = putField Nothing
-                     , R.uint64 = putField Nothing
-                     , R.sint = putField Nothing
-                     , R.bool = putField Nothing
+        v = R.RawVal { R._string = putField $ Just "Some Value"
+                     , R._float = putField Nothing
+                     , R._double = putField Nothing
+                     , R._int64 = putField Nothing
+                     , R._uint64 = putField Nothing
+                     , R._sint = putField Nothing
+                     , R._bool = putField Nothing
                      }
 
 -- | Correct decoding of `onepoint.mvt`
 onePoint :: R.RawVectorTile
 onePoint = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R.version = putField 1
-                       , R.name = putField "OnePoint"
-                       , R.features = putField [f]
-                       , R.keys = putField []
-                       , R.values = putField []
-                       , R.extent = putField $ Just 4096
+  where l = R.RawLayer { R._version = putField 1
+                       , R._name = putField "OnePoint"
+                       , R._features = putField [f]
+                       , R._keys = putField []
+                       , R._values = putField []
+                       , R._extent = putField $ Just 4096
                        }
-        f = R.RawFeature { R.featureId = putField Nothing
-                         , R.tags = putField []
-                         , R.geom = putField $ Just R.Point
-                         , R.geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
+        f = R.RawFeature { R._featureId = putField Nothing
+                         , R._tags = putField []
+                         , R._geom = putField $ Just R.Point
+                         , R._geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
                          }
 
 -- | Correct decoding of `linestring.mvt`
 oneLineString :: R.RawVectorTile
 oneLineString = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R.version = putField 1
-                       , R.name = putField "OneLineString"
-                       , R.features = putField [f]
-                       , R.keys = putField []
-                       , R.values = putField []
-                       , R.extent = putField $ Just 4096
+  where l = R.RawLayer { R._version = putField 1
+                       , R._name = putField "OneLineString"
+                       , R._features = putField [f]
+                       , R._keys = putField []
+                       , R._values = putField []
+                       , R._extent = putField $ Just 4096
                        }
-        f = R.RawFeature { R.featureId = putField Nothing
-                         , R.tags = putField []
-                         , R.geom = putField $ Just R.LineString
+        f = R.RawFeature { R._featureId = putField Nothing
+                         , R._tags = putField []
+                         , R._geom = putField $ Just R.LineString
                          -- MoveTo(+5,+5), LineTo(+1195,+1195)
-                         , R.geometries = putField [9, 10, 10, 10, 2390, 2390]
+                         , R._geometries = putField [9, 10, 10, 10, 2390, 2390]
                          }
 
 -- | Correct decoding of `polygon.mvt`
 onePolygon :: R.RawVectorTile
 onePolygon = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R.version = putField 1
-                       , R.name = putField "OnePolygon"
-                       , R.features = putField [f]
-                       , R.keys = putField []
-                       , R.values = putField []
-                       , R.extent = putField $ Just 4096
+  where l = R.RawLayer { R._version = putField 1
+                       , R._name = putField "OnePolygon"
+                       , R._features = putField [f]
+                       , R._keys = putField []
+                       , R._values = putField []
+                       , R._extent = putField $ Just 4096
                        }
-        f = R.RawFeature { R.featureId = putField Nothing
-                         , R.tags = putField []
-                         , R.geom = putField $ Just R.Polygon
+        f = R.RawFeature { R._featureId = putField Nothing
+                         , R._tags = putField []
+                         , R._geom = putField $ Just R.Polygon
                          -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
-                         , R.geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
+                         , R._geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
                          }
 
 zencoding :: Assertion
-zencoding = assert $ map (unzig . zig) vs @?= vs
+zencoding = assert $ map (R.unzig . R.zig) vs @?= vs
   where vs = [0,(-1),1,(-2),2,(-3),3]
 
 commandTest :: Assertion
-commandTest = assert $ commands [9,4,4,18,6,4,5,4,15] @?= Right
-  [ MoveTo $ U.singleton (2,2)
-  , LineTo $ U.fromList [(3,2),(-3,2)]
-  , ClosePath ]
+commandTest = assert $ R.commands [9,4,4,18,6,4,5,4,15] @?= Right
+  [ R.MoveTo $ U.singleton (2,2)
+  , R.LineTo $ U.fromList [(3,2),(-3,2)]
+  , R.ClosePath ]
 
 commandIso :: Assertion
-commandIso = assert $ (uncommands . fromRight $ commands cs) @?= cs
+commandIso = assert $ (R.uncommands . fromRight $ R.commands cs) @?= cs
   where cs = [9,4,4,18,6,4,5,4,15]
 
 pointIso :: Assertion
 pointIso = cs' @?= cs
   where cs = [17,4,4,6,6]
-        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Point)
+        cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Point)
 
 linestringIso :: Assertion
 linestringIso = cs' @?= cs
   where cs = [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4]
-        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @LineString)
+        cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @LineString)
 
 -- | Two external rings
 polygonIso :: Assertion
 polygonIso = cs' @?= cs
   where cs = [9,4,4,18,6,4,5,4,15,9,4,4,18,6,4,5,4,15]
-        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Polygon)
+        cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Polygon)
 
 -- | One external, one internal
 polygonIso2 :: Assertion
 polygonIso2 = cs' @?= cs
   where cs = [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15]
-        cs' = fromRight $ uncommands . toCommands <$> (commands cs >>= fromCommands @Polygon)
+        cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Polygon)
 
 {-}
 foo :: FilePath -> IO (Either Text VectorTile)
