@@ -25,7 +25,7 @@ VectorTile spec. It aims to be a solid reference from which to implement
 other codecs. It exposes a small API of conversion functions between raw
 protobuf data and a higher-level `VectorTile` type that is more condusive to
 further processing. It also exposes fairly simplistic (yet sensible)
-implementations of the typically GIS `Geometry` types:
+implementations of the typical GIS `Geometry` types:
 
 * Point
 * LineString
