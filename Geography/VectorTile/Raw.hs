@@ -1,6 +1,8 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -- |
 -- Module    : Geography.VectorTile.Raw
@@ -28,6 +30,7 @@ module Geography.VectorTile.Raw
   , RawVal(..)
   , RawFeature(..)
   , GeomType(..)
+  , Geom(..)
     -- * Encoding / Decoding
   , decode
   , encode
@@ -44,6 +47,7 @@ import           Data.Serialize.Put
 import           Data.Text (Text, pack)
 import           Data.Word
 import           GHC.Generics (Generic)
+import qualified Geography.VectorTile.Geometry as G
 
 ---
 
@@ -102,6 +106,20 @@ data GeomType = Unknown | Point | LineString | Polygon
 instance Encode GeomType
 instance Decode GeomType
 instance NFData GeomType
+
+-- | A `Geom` can recover its `GeomType` from its `G.Geometry` instance.
+class G.Geometry g => Geom g where
+  -- | The @g@ here is a proxy argument to discern the type.
+  geomType :: g -> GeomType
+
+instance Geom G.Point where
+  geomType _ = Point
+
+instance Geom G.LineString where
+  geomType _ = LineString
+
+instance Geom G.Polygon where
+  geomType _ = Polygon
 
 -- | Attempt to decode a `BS.ByteString` of raw protobuf data into a mid-level
 -- representation of a `RawVectorTile`.

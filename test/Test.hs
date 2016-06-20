@@ -40,6 +40,14 @@ suite op ls pl rd = testGroup "Unit Tests"
       , testCase "linestring.mvt -> VectorTile" $ tileDecode ls
       , testCase "roads.mvt -> VectorTile" $ tileDecode rd
       ]
+    , testGroup "Encoding"
+      [ testGroup "RawVectorTile <-> VectorTile"
+        [ testCase "One Point" $ encodeIso onePoint
+        , testCase "One LineString" $ encodeIso oneLineString
+        , testCase "One Polygon" $ encodeIso onePolygon
+        , testCase "roads.mvt" . encodeIso . fromRight $ R.decode rd
+        ]
+      ]
     , testGroup "Serialization Isomorphism"
       [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
       , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
@@ -114,6 +122,9 @@ fromRight _ = error "`Left` given to fromRight!"
 
 rawTest :: IO (Either String R.RawVectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
+
+encodeIso :: R.RawVectorTile -> Assertion
+encodeIso vt = assert . isRight . fmap untile $ tile vt
 
 testTile :: R.RawVectorTile
 testTile = R.RawVectorTile $ putField [l]

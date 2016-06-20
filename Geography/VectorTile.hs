@@ -51,12 +51,12 @@ module Geography.VectorTile
     --
     -- > import qualified Geography.VectorTile.Raw as R
     -- >
-    -- > encode $ untile someTile
+    -- > R.encode $ untile someTile
     --
     -- This is a pure process and will succeed every time.
   , untile
   , unlayer
-  , unfeatures
+  , unfeature
   , unval
   ) where
 
@@ -64,15 +64,19 @@ import           Control.Applicative ((<|>))
 import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldrM)
 import           Data.Int
+import           Data.List (nub, elemIndex)
 import qualified Data.Map.Lazy as M
+import           Data.Maybe (fromJust)
+import           Data.Monoid
 import           Data.ProtocolBuffers
+import qualified Data.Set as S
 import           Data.Text (Text,pack)
 import qualified Data.Vector as V
 import           Data.Word
+import           GHC.Generics (Generic)
 import           Geography.VectorTile.Geometry
 import qualified Geography.VectorTile.Raw as R
 import           Geography.VectorTile.Util
-import           GHC.Generics (Generic)
 
 ---
 
@@ -150,11 +154,17 @@ layer l = do
 -- | Convert a list of `R.RawFeature`s of parsed protobuf data into `V.Vector`s
 -- of each of the three legal `Geometry` types.
 --
--- The long type signature is due to the fact that `R.RawLayer`s and `R.RawFeature`s
+-- The long type signature is due to two things:
+--
+-- 1. `Feature`s are polymorphic at the high level, but not at the parsed
+-- protobuf mid-level. In a @[RawFeature]@, there are features of points,
+-- linestrings, and polygons all mixed together.
+--
+-- 2. `R.RawLayer`s and `R.RawFeature`s
 -- are strongly coupled at the protobuf level. In order to achieve higher
 -- compression ratios, `R.RawLayer`s contain all metadata in key/value lists
 -- to be shared across their `R.RawFeature`s, while those `R.RawFeature`s store only
--- indexes into those lists. As a result, this function needs to be passed
+-- indices into those lists. As a result, this function needs to be passed
 -- those key/value lists from the parent `R.RawLayer`, and a more isomorphic:
 --
 -- > feature :: Geometry g => RawFeature -> Either Text (Feature g)
@@ -209,14 +219,30 @@ unlayer l = R.RawLayer { R.version = putField . fromIntegral $ version l
                        , R.name = putField $ name l
                        , R.features = putField fs
                        , R.keys = putField ks
-                       , R.values = putField vs
+                       , R.values = putField $ map unval vs
                        , R.extent = putField . Just . fromIntegral $ extent l }
-  where (fs,ks,vs) = unfeatures (points l) (linestrings l) (polygons l)
+  where (ks,vs) = totalMeta (points l) (linestrings l) (polygons l)
+        fs = V.toList $ V.concat [ V.map (unfeature ks vs) (points l)
+                                 , V.map (unfeature ks vs) (linestrings l)
+                                 , V.map (unfeature ks vs) (polygons l) ]
 
--- | Encode lists of high-level `Feature`s back into their mid-level
--- `R.RawFeature` form, while also yielding their collective metadata
--- for the parent `R.RawLayer`.
-unfeatures ps ls polys = undefined :: ([R.RawFeature],[Text],[R.RawVal])
+totalMeta :: V.Vector (Feature Point) -> V.Vector (Feature LineString) -> V.Vector (Feature Polygon) -> ([Text], [Val])
+totalMeta ps ls polys = (keys, vals)
+  where keys = S.toList . S.unions $ f ps <> f ls <> f polys
+        vals = nub . concat $ g ps <> g ls <> g polys  -- `nub` is O(n^2)
+        f = V.foldr (\x acc -> M.keysSet (metadata x) : acc) []
+        g = V.foldr (\x acc -> M.elems (metadata x) : acc) []
+
+-- | Encode a high-level `Feature` back into its mid-level `R.RawFeature` form.
+unfeature :: R.Geom g => [Text] -> [Val] -> Feature g -> R.RawFeature
+unfeature keys vals fe = R.RawFeature
+                         { R.featureId = putField . Just . fromIntegral $ featureId fe
+                         , R.tags = putField $ tags fe
+                         , R.geom = putField . Just . R.geomType . V.head $ geometries fe
+                         , R.geometries = putField . uncommands . toCommands $ geometries fe
+                         }
+  where tags = unpairs . map f . M.toList . metadata
+        f (k,v) = both (fromIntegral . fromJust) (k `elemIndex` keys, v `elemIndex` vals)
 
 -- | Encode a high-level `Val` back into its mid-level `R.RawVal` form.
 unval :: Val -> R.RawVal

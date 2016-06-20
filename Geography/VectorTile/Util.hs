@@ -19,6 +19,12 @@ pairs [] = Right []
 pairs [_] = Left "Uneven number of parameters given."
 pairs (x:y:zs) = ((x,y) :) <$>  pairs zs
 
+-- | Flatten a list of pairs. Equivalent to:
+--
+-- > ps ^.. each . both
+unpairs :: [(a,a)] -> [a]
+unpairs = foldr (\(a,b) acc -> a : b : acc) []
+
 -- | Apply a pure function to both elements of a tuple.
 both :: (a -> b) -> (a,a) -> (b,b)
 both f (x,y) = (f x, f y)
