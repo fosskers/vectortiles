@@ -6,7 +6,9 @@ resolver: nightly-2016-06-01
 
 # Local packages, usually specified by relative directory name
 packages:
-- '.'
+  - '.'
+  - 'demo/'
+
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
   - protobuf-0.2.1.1
