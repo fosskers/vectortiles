@@ -58,6 +58,23 @@ module Geography.VectorTile
   , unlayer
   , unfeature
   , unval
+    -- * Lenses
+    -- | This section can be safely ignored if one isn't concerned with lenses.
+    -- Otherwise, see the following for a good primer on Haskell lenses:
+    -- http://hackage.haskell.org/package/lens-tutorial-1.0.1/docs/Control-Lens-Tutorial.html
+    --
+    -- These lenses are written in a generic way to avoid taking a dependency
+    -- on one of the lens libraries.
+  , layers
+  , version
+  , name
+  , points
+  , linestrings
+  , polygons
+  , extent
+  , featureId
+  , metadata
+  , geometries
   ) where
 
 import           Control.Applicative ((<|>))
@@ -85,22 +102,50 @@ import           Geography.VectorTile.Util
 -- | A high-level representation of a Vector Tile. At its simplest, a tile
 -- is just a list of `Layer`s.
 --
--- There is potential to implement `layers` as a `M.Map`, with its String-based
+-- There is potential to implement `_layers` as a `M.Map`, with its String-based
 -- `name` as a key.
-newtype VectorTile = VectorTile { layers :: V.Vector Layer } deriving (Eq,Show,Generic)
+newtype VectorTile = VectorTile { _layers :: V.Vector Layer } deriving (Eq,Show,Generic)
+
+-- | > Lens' VectorTile (Vector Layer)
+layers :: Functor f => (V.Vector Layer -> f (V.Vector Layer)) -> VectorTile -> f VectorTile
+layers f v = VectorTile <$> f (_layers v)
 
 instance NFData VectorTile
 
 -- | A layer, which could contain any number of `Feature`s of any `Geometry` type.
 -- This codec only respects the canonical three `Geometry` types, and we split
 -- them here explicitely to allow for more fine-grained access to each type.
-data Layer = Layer { version :: Int  -- ^ The version of the spec we follow. Should always be 2.
-                   , name :: Text
-                   , points :: V.Vector (Feature Point)
-                   , linestrings :: V.Vector (Feature LineString)
-                   , polygons :: V.Vector (Feature Polygon)
-                   , extent :: Int  -- ^ Default: 4096
+data Layer = Layer { _version :: Int  -- ^ The version of the spec we follow. Should always be 2.
+                   , _name :: Text
+                   , _points :: V.Vector (Feature Point)
+                   , _linestrings :: V.Vector (Feature LineString)
+                   , _polygons :: V.Vector (Feature Polygon)
+                   , _extent :: Int  -- ^ Default: 4096
                    } deriving (Eq,Show,Generic)
+
+-- | > Lens' Layer Int
+version :: Functor f => (Layer -> f Int) -> Layer -> f Layer
+version f l = fmap (\v -> l { _version = v }) $ f l
+
+-- | > Lens' Layer Text
+name :: Functor f => (Layer -> f Text) -> Layer -> f Layer
+name f l = fmap (\v -> l { _name = v }) $ f l
+
+-- | > Lens' Layer (Vector (Feature Point))
+points :: Functor f => (Layer -> f (V.Vector (Feature Point))) -> Layer -> f Layer
+points f l = fmap (\v -> l { _points = v }) $ f l
+
+-- | > Lens' Layer (Vector (Feature LineString)))
+linestrings :: Functor f => (Layer -> f (V.Vector (Feature LineString))) -> Layer -> f Layer
+linestrings f l = fmap (\v -> l { _linestrings = v }) $ f l
+
+-- | > Lens' Layer (Vector (Feature Polygon)))
+polygons :: Functor f => (Layer -> f (V.Vector (Feature Polygon))) -> Layer -> f Layer
+polygons f l = fmap (\v -> l { _polygons = v }) $ f l
+
+-- | > Lens' Layer Int
+extent :: Functor f => (Layer -> f Int) -> Layer -> f Layer
+extent f l = fmap (\v -> l { _extent = v }) $ f l
 
 instance NFData Layer
 
@@ -117,9 +162,21 @@ instance NFData Layer
 --
 -- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
 -- the same thing, as a `V.Vector` of that `Geometry`.
-data Feature g = Feature { featureId :: Int  -- ^ Default: 0
-                         , metadata :: M.Map Text Val
-                         , geometries :: V.Vector g } deriving (Eq,Show,Generic)
+data Feature g = Feature { _featureId :: Int  -- ^ Default: 0
+                         , _metadata :: M.Map Text Val
+                         , _geometries :: V.Vector g } deriving (Eq,Show,Generic)
+
+-- | > Lens' (Feature g) Int
+featureId :: Functor f => (Feature g -> f Int) -> Feature g -> f (Feature g)
+featureId f l = fmap (\v -> l { _featureId = v }) $ f l
+
+-- | > Lens' (Feature g) (Map Text Val)
+metadata :: Functor f => (Feature g -> f (M.Map Text Val)) -> Feature g -> f (Feature g)
+metadata f l = fmap (\v -> l { _metadata = v }) $ f l
+
+-- | > Lens' (Feature g) (Vector g)
+geometries :: Functor f => (Feature g -> f (V.Vector g)) -> Feature g -> f (Feature g)
+geometries f l = fmap (\v -> l { _geometries = v }) $ f l
 
 instance NFData g => NFData (Feature g)
 
@@ -142,12 +199,12 @@ tile = fmap (VectorTile . V.fromList) . mapM layer . getField . R.layers
 layer :: R.RawLayer -> Either Text Layer
 layer l = do
   (ps,ls,polys) <- features keys vals . getField $ R.features l
-  pure Layer { version = fromIntegral . getField $ R.version l
-             , name = getField $ R.name l
-             , points = ps
-             , linestrings = ls
-             , polygons = polys
-             , extent = maybe 4096 fromIntegral (getField $ R.extent l) }
+  pure Layer { _version = fromIntegral . getField $ R.version l
+             , _name = getField $ R.name l
+             , _points = ps
+             , _linestrings = ls
+             , _polygons = polys
+             , _extent = maybe 4096 fromIntegral (getField $ R.extent l) }
   where keys = getField $ R.keys l
         vals = getField $ R.values l
 
@@ -183,9 +240,9 @@ features keys vals fs = (,,) <$> ps <*> ls <*> polys
         f x acc = do
           geos <- commands (getField $ R.geometries x) >>= fromCommands
           meta <- getMeta keys vals . getField $ R.tags x
-          pure $ Feature { featureId = maybe 0 fromIntegral . getField $ R.featureId x
-                         , metadata = meta
-                         , geometries = geos
+          pure $ Feature { _featureId = maybe 0 fromIntegral . getField $ R.featureId x
+                         , _metadata = meta
+                         , _geometries = geos
                          } `V.cons` acc
 
 -- | Convert a `R.RawVal` parsed from protobuf data into a useable
@@ -210,38 +267,38 @@ getMeta keys vals tags = do
 -- | Encode a high-level `VectorTile` back into its mid-level
 -- `R.RawVectorTile` form.
 untile :: VectorTile -> R.RawVectorTile
-untile vt = R.RawVectorTile { R.layers = putField . V.toList . V.map unlayer $ layers vt }
+untile vt = R.RawVectorTile { R.layers = putField . V.toList . V.map unlayer $ _layers vt }
 
 -- Has to get back all its metadata from its features
 -- | Encode a high-level `Layer` back into its mid-level `R.RawLayer` form.
 unlayer :: Layer -> R.RawLayer
-unlayer l = R.RawLayer { R.version = putField . fromIntegral $ version l
-                       , R.name = putField $ name l
+unlayer l = R.RawLayer { R.version = putField . fromIntegral $ _version l
+                       , R.name = putField $ _name l
                        , R.features = putField fs
                        , R.keys = putField ks
                        , R.values = putField $ map unval vs
-                       , R.extent = putField . Just . fromIntegral $ extent l }
-  where (ks,vs) = totalMeta (points l) (linestrings l) (polygons l)
-        fs = V.toList $ V.concat [ V.map (unfeature ks vs) (points l)
-                                 , V.map (unfeature ks vs) (linestrings l)
-                                 , V.map (unfeature ks vs) (polygons l) ]
+                       , R.extent = putField . Just . fromIntegral $ _extent l }
+  where (ks,vs) = totalMeta (_points l) (_linestrings l) (_polygons l)
+        fs = V.toList $ V.concat [ V.map (unfeature ks vs) (_points l)
+                                 , V.map (unfeature ks vs) (_linestrings l)
+                                 , V.map (unfeature ks vs) (_polygons l) ]
 
 totalMeta :: V.Vector (Feature Point) -> V.Vector (Feature LineString) -> V.Vector (Feature Polygon) -> ([Text], [Val])
 totalMeta ps ls polys = (keys, vals)
   where keys = S.toList . S.unions $ f ps <> f ls <> f polys
         vals = nub . concat $ g ps <> g ls <> g polys  -- `nub` is O(n^2)
-        f = V.foldr (\x acc -> M.keysSet (metadata x) : acc) []
-        g = V.foldr (\x acc -> M.elems (metadata x) : acc) []
+        f = V.foldr (\x acc -> M.keysSet (_metadata x) : acc) []
+        g = V.foldr (\x acc -> M.elems (_metadata x) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `R.RawFeature` form.
 unfeature :: R.Geom g => [Text] -> [Val] -> Feature g -> R.RawFeature
 unfeature keys vals fe = R.RawFeature
-                         { R.featureId = putField . Just . fromIntegral $ featureId fe
+                         { R.featureId = putField . Just . fromIntegral $ _featureId fe
                          , R.tags = putField $ tags fe
-                         , R.geom = putField . Just . R.geomType . V.head $ geometries fe
-                         , R.geometries = putField . uncommands . toCommands $ geometries fe
+                         , R.geom = putField . Just . R.geomType . V.head $ _geometries fe
+                         , R.geometries = putField . uncommands . toCommands $ _geometries fe
                          }
-  where tags = unpairs . map f . M.toList . metadata
+  where tags = unpairs . map f . M.toList . _metadata
         f (k,v) = both (fromIntegral . fromJust) (k `elemIndex` keys, v `elemIndex` vals)
 
 -- | Encode a high-level `Val` back into its mid-level `R.RawVal` form.
