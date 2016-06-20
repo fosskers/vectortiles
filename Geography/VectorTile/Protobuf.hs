@@ -97,7 +97,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import           GHC.Generics (Generic)
-import qualified Geography.VectorTile as VT
+import qualified Geography.VectorTile.VectorTile as VT
 import qualified Geography.VectorTile.Geometry as G
 import           Geography.VectorTile.Util
 import           Text.Printf.TH
