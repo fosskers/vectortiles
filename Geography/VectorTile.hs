@@ -21,6 +21,27 @@
 -- 1. "Geography.VectorTile" (here)
 -- 2. "Geography.VectorTile.Geometry"
 -- 3. "Geography.VectorTile.Raw"
+--
+-- == Usage
+--
+-- This library reads and writes strict `ByteString`s. Given some legal
+-- VectorTile file called @roads.mvt@:
+--
+-- > import qualified Data.ByteString as BS
+-- > import           Data.Text (Text)
+-- > import           Geography.VectorTile
+-- > import qualified Geography.VectorTile.Raw as R
+-- >
+-- > -- | Read in raw protobuf data and decode it into a high-level type.
+-- > roads :: IO (Either Text VectorTile)
+-- > roads = do
+-- >   mvt <- BS.readFile "roads.mvt"
+-- >   pure $ R.decode mvt >>= tile
+--
+-- Or encode a `VectorTile` back into a `ByteString`:
+--
+-- > roadsBytes :: VectorTile -> BS.ByteString
+-- > roadsBytes = R.encode . untile
 
 module Geography.VectorTile
   ( -- * Types
