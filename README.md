@@ -1,6 +1,11 @@
 VectorTiles
 ===========
 
+[![Build Status](https://travis-ci.org/fosskers/vectortiles.svg?branch=master)](https://travis-ci.org/fosskers/vectortiles)
+[![Hackage](https://img.shields.io/hackage/v/vectortiles.svg?style=flat)](https://hackage.haskell.org/package/vectortiles)
+[![Stackage Nightly](http://stackage.org/package/vectortiles/badge/nightly)](http://stackage.org/nightly/package/vectortiles)
+[![Stackage LTS](http://stackage.org/package/vectortiles/badge/lts)](http://stackage.org/lts/package/vectortiles)
+
 What are VectorTiles?
 ---------------------
 Invented by [Mapbox](https://www.mapbox.com/), they are a combination of the
