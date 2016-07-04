@@ -49,11 +49,11 @@ suite op ls pl rd = testGroup "Unit Tests"
         ]
       ]
     , testGroup "Serialization Isomorphism"
-      [ testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
-      , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
+      [ --testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
+--      , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
 --      , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
       --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
-      , testCase "testTile <-> protobuf bytes" testTileIso
+      testCase "testTile <-> protobuf bytes" testTileIso
       ]
     ]
   , testGroup "Geometries"
@@ -201,7 +201,7 @@ onePolygon = R.RawVectorTile $ putField [l]
 
 zencoding :: Assertion
 zencoding = assert $ map (R.unzig . R.zig) vs @?= vs
-  where vs = [0,(-1),1,(-2),2,(-3),3]
+  where vs = [0,(-1),1,(-2),2,(-3),3,2147483647,(-2147483648)]
 
 commandTest :: Assertion
 commandTest = assert $ R.commands [9,4,4,18,6,4,5,4,15] @?= Right
