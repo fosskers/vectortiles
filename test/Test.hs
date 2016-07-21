@@ -34,10 +34,11 @@ suite op ls pl rd = testGroup "Unit Tests"
     [ testGroup "Decoding"
       [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
       , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
---      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
+      , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
       , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
       , testCase "onepoint.mvt -> VectorTile" $ tileDecode op
       , testCase "linestring.mvt -> VectorTile" $ tileDecode ls
+      , testCase "polygon.mvt -> VectorTile" $ tileDecode pl
       , testCase "roads.mvt -> VectorTile" $ tileDecode rd
       ]
     , testGroup "Encoding"
