@@ -12,18 +12,22 @@ main :: IO ()
 main = do
   op <- BS.readFile "test/onepoint.mvt"
   ls <- BS.readFile "test/linestring.mvt"
+  pl <- BS.readFile "test/polygon.mvt"
   rd <- BS.readFile "test/roads.mvt"
   let op' = fromRight $ R.decode op >>= R.tile
       ls' = fromRight $ R.decode ls >>= R.tile
+      pl' = fromRight $ R.decode pl >>= R.tile
       rd' = fromRight $ R.decode rd >>= R.tile
   defaultMain [ bgroup "Decoding"
                 [ bgroup "onepoint.mvt" $ decodes op
                 , bgroup "linestring.mvt" $ decodes ls
+                , bgroup "polygon.mvt" $ decodes pl
                 , bgroup "roads.mvt" $ decodes rd
                 ]
               , bgroup "Encoding"
                 [ bgroup "Point" $ encodes op'
                 , bgroup "LineString" $ encodes ls'
+                , bgroup "Polygon" $ encodes pl'
                 , bgroup "Roads" $ encodes rd'
                 ]
               ]

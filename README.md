@@ -78,20 +78,22 @@ are from a 2016 Lenovo ThinkPad Carbon X1 with an Intel Core i7 processor,
 comparing this library with a [Python library of similar
 functionality](https://github.com/mapzen/mapbox-vector-tile).
 
+*Note: 1 ms = 1000 μs*
+
 ##### Decoding
 
-| | One Point | One LineString | roads.mvt (40kb, 15 layers)
-| --- | --- | --- | --- |
-| CPython 3.5.1 | 60 μs | 70 μs | 73 ms |
-| PyPy 5.3 | 115 μs | 210 μs | 11.6 ms |
-| Haskell | 3.6 μs | 4.3 μs | 14.2 ms
+| | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
+| --- | --- | --- | --- | --- |
+| CPython 3.5.2 | 61 μs | 71 μs | 87 μs | 76.3 ms |
+| PyPy 5.3 | 120 μs | 221 μs | 221 μs | 11.9 ms |
+| Haskell | 3.7 μs | 4.7 μs | 5.8 μs | 16.3 ms
 
 ##### Encoding
 
-| | One Point | One LineString | roads.mvt (40kb, 15 layers)
-| --- | --- | --- | --- |
-| CPython 3.5.1 | 175 μs | 227 μs | N/A |
-| Haskell | 3.1 μs | 3.9 μs | 10 ms
+| | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
+| --- | --- | --- | --- | --- |
+| CPython 3.5.2 | 216 μs | 275 μs | 696 μs | N/A |
+| Haskell | 3.8 μs | 4.1 μs | 4.6 μs | 10.4 ms
 
 *Certain encoding benchmarks for Python were not possible.*
 
