@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                vectortiles
-version:             1.1.0
+version:             1.1.1
 synopsis:            GIS Vector Tiles, as defined by Mapbox.
 description:         GIS Vector Tiles, as defined by Mapbox.
                      .
@@ -26,13 +26,15 @@ maintainer:          cwoodbury@azavea.com
 -- copyright:
 category:            Geography
 build-type:          Simple
--- extra-source-files:
+
 cabal-version:       >=1.10
 
 extra-source-files:    test/roads.mvt
                      , test/onepoint.mvt
                      , test/linestring.mvt
                      , test/polygon.mvt
+                     , README.md
+                     , CHANGELOG.md
 
 library
   exposed-modules:     Geography.VectorTile
