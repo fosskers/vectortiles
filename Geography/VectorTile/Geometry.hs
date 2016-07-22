@@ -3,7 +3,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}

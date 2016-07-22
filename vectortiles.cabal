@@ -86,6 +86,9 @@ benchmark vectortiles-bench
                      , protobuf
                      , bytestring
                      , cereal
+                     , microlens >= 0.4 && < 0.5
+                     , microlens-platform >= 0.3 && < 0.4
+                     , text
 
   hs-source-dirs:      bench
   main-is:             Bench.hs

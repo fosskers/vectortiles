@@ -67,7 +67,6 @@ import qualified Data.Vector.Unboxed as U
 newtype LineString = LineString { lsPoints :: U.Vector Point }
 ```
 
-* We use the new `StrictData` language pragma from GHC8.
 * All lenses are `INLINE`d.
 
 #### Performance
@@ -84,18 +83,45 @@ functionality](https://github.com/mapzen/mapbox-vector-tile).
 
 | | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
 | --- | --- | --- | --- | --- |
-| CPython 3.5.2 | 61 μs | 71 μs | 87 μs | 76.3 ms |
-| PyPy 5.3 | 120 μs | 221 μs | 221 μs | 11.9 ms |
-| Haskell | 3.7 μs | 4.7 μs | 5.8 μs | 16.3 ms
+| CPython 3.5.2 | 59 μs | 69 μs | 82 μs | 73 ms |
+| PyPy 5.3 | 115 μs | 213 μs | 212 μs | 11.4 ms |
+| Haskell | 3.6 μs | 4.7 μs | 5.7 μs | 16.6 ms
+
+*The Haskell times are measuring data evaluation to their Normal Form (fully
+evaluated form).*
+
+*The Python class decoded to is the builtin `dict` class.*
 
 ##### Encoding
 
 | | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
 | --- | --- | --- | --- | --- |
-| CPython 3.5.2 | 216 μs | 275 μs | 696 μs | N/A |
-| Haskell | 3.8 μs | 4.1 μs | 4.6 μs | 10.4 ms
+| CPython 3.5.2 | 212 μs | 268 μs | 667 μs | N/A |
+| Haskell | 3.1 μs | 3.8 μs | 4.5 μs | 10 ms
 
 *Certain encoding benchmarks for Python were not possible.*
+
+##### Data Access (Fetching all Layer names)
+
+| | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
+| --- | --- | --- | --- | --- |
+| CPython 3.5.2 | 60 μs | 69 μs | 83 μs | 73 ms |
+| PyPy 5.3 | 162 μs | 124 μs | 103 μs | 7.7 ms |
+| Haskell | 3.1 μs | 3.4 μs | 3.5 μs | 6.5 ms
+
+*The operation being benchmarked is `ByteString -> [Text]`, meaning we
+include the decoding time to account for speed gains afforded by laziness.*
+
+##### Conclusions
+
+- **Laziness pays off.** In Haskell, just fetching some specific data field
+is faster than decoding the entire structure.
+- **Python data fetches are fast.** They are based on the `dict` class, so
+fetch operations will be as fast as `dict` is.
+- **PyPy results are enigmatic.** Python3 seems to do much better "off the
+block", but given time the PyPy JIT overtakes it. Fetching layer names also
+seems to be faster than decoding the entire object, somehow. This may be due
+to the JIT being clever, noticing we aren't using the rest of the structure.
 
 Questions & Issues
 ------------------

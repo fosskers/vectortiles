@@ -1,4 +1,3 @@
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeSynonymInstances #-}

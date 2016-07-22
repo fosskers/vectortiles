@@ -1,4 +1,3 @@
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 

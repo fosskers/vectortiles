@@ -3,8 +3,11 @@ module Main where
 import           Control.Monad ((>=>))
 import           Criterion.Main
 import qualified Data.ByteString as BS
+import           Data.Text (Text)
 import           Geography.VectorTile
 import qualified Geography.VectorTile.Protobuf as R
+import           Lens.Micro
+import           Lens.Micro.Platform ()  -- Instances only.
 
 ---
 
@@ -30,6 +33,14 @@ main = do
                 , bgroup "Polygon" $ encodes pl'
                 , bgroup "Roads" $ encodes rd'
                 ]
+              , bgroup "Data Access"
+                [ bgroup "All Layer Names"
+                  [ bench "One Point" $ nf layerNames op
+                  , bench "One LineString" $ nf layerNames ls
+                  , bench "One Polygon" $ nf layerNames pl
+                  , bench "roads.mvt" $ nf layerNames rd
+                  ]
+                ]
               ]
 
 decodes :: BS.ByteString -> [Benchmark]
@@ -41,6 +52,10 @@ encodes :: VectorTile -> [Benchmark]
 encodes vt = [ bench "Raw.VectorTile" $ nf R.untile vt
              , bench "ByteString" $ nf (R.encode . R.untile) vt
              ]
+
+layerNames :: BS.ByteString -> [Text]
+layerNames mvt = t ^.. layers . each . name
+  where t = fromRight $ R.decode mvt >>= R.tile
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b

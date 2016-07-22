@@ -12,10 +12,15 @@ def decodeIt(data):
 def encodeIt(obj):
     return mapbox_vector_tile.encode([obj], y_coord_down=True)
 
+def layerNames(data):
+    decoded = mapbox_vector_tile.decode(data, y_coord_down=True)
+    return list(decoded.keys())
+
 # Benchmark the decoding process.
 def benchDecode(file):
     print('Benchmarking {}'.format(file))
 
+    # Exclude the IO from the benchmark timing.
     with open(file, 'rb') as f:
         data = f.read()
 
@@ -30,6 +35,19 @@ def benchEncode(obj, name):
 
     iters = 100
     wrapped = wrapper(encodeIt, obj)
+    the_time = timeit.timeit(wrapped, number=iters)
+
+    print('Average: {} ms'.format(1000 * the_time / iters))
+
+def benchFetch(file):
+    print('Benchmarking {}'.format(file))
+
+    # Exclude the IO from the benchmark timing.
+    with open(file, 'rb') as f:
+        data = f.read()
+
+    iters = 100
+    wrapped = wrapper(layerNames, data)
     the_time = timeit.timeit(wrapped, number=iters)
 
     print('Average: {} ms'.format(1000 * the_time / iters))
@@ -71,10 +89,17 @@ polygon = {
     ]
 }
 
-print('*** ENCODING ***')
+print('\n*** ENCODING ***')
 
 benchEncode(onepoint, 'One Point')
 benchEncode(linestring, 'One LineString')
 benchEncode(polygon, 'One Polygon')
 
-print("Done")
+print('\n*** DATA ACCESS ***')
+
+benchFetch('test/onepoint.mvt')
+benchFetch('test/linestring.mvt')
+benchFetch('test/polygon.mvt')
+benchFetch('test/roads.mvt')
+
+print("\nDone")
