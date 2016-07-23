@@ -216,7 +216,7 @@ commandIso = assert $ (R.uncommands . fromRight $ R.commands cs) @?= cs
 
 pointIso :: Assertion
 pointIso = cs' @?= cs
-  where cs = [17,4,4,6,6]
+  where cs = [25,4,4,6,6,3,3]
         cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Point)
 
 linestringIso :: Assertion

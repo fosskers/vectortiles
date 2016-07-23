@@ -191,11 +191,8 @@ instance ProtobufGeom G.LineString where
 
   toCommands ls = concat $ evalState (mapM f ls) (0,0)
     where f (G.LineString ps) = do
-            curr <- get
-            let (h,t) = (U.head ps, U.tail ps)
-            put h
-            l <- U.mapM collapse t
-            pure [MoveTo $ U.singleton (G.x h - G.x curr, G.y h - G.y curr), LineTo l]
+            l <- U.mapM collapse ps
+            pure [MoveTo . U.singleton $ U.head l, LineTo $ U.tail l]
 
   geomType _ = LineString
 
@@ -231,11 +228,8 @@ instance ProtobufGeom G.Polygon where
 
   toCommands ps = concat $ evalState (mapM f ps) (0,0)
     where f (G.Polygon p i) = do
-            curr <- get
-            let (h,t) = (U.head p, U.tail $ U.init p)  -- Exclude the final point.
-            put h
-            l <- U.mapM collapse t
-            let cs = [MoveTo $ U.singleton (G.x h - G.x curr, G.y h - G.y curr), LineTo l, ClosePath]
+            l <- U.mapM collapse $ U.init p  -- Exclude the final point.
+            let cs = [MoveTo . U.singleton $ U.head l, LineTo $ U.tail l, ClosePath]
             concat . V.cons cs <$> mapM f i
 
   geomType _ = Polygon
