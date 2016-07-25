@@ -63,8 +63,9 @@ suite op ls pl rd = testGroup "Unit Tests"
     , testCase "[Word32] <-> [Command]" commandIso
     , testCase "[Word32] <-> V.Vector Point" pointIso
     , testCase "[Word32] <-> V.Vector LineString" linestringIso
-    , testCase "[Word32] <-> V.Vector Polygon (2 ex)" polygonIso
-    , testCase "[Word32] <-> V.Vector Polygon (1 ex, 1 in)" polygonIso2
+    , testCase "[Word32] <-> V.Vector Polygon (2 solid)" polygonIso
+    , testCase "[Word32] <-> V.Vector Polygon (1 holed)" polygonIso2
+    , testCase "[Word32] <-> V.Vector Polygon (1 holed, 1 solid)" polygonIso3
     ]
   ]
 
@@ -224,16 +225,23 @@ linestringIso = cs' @?= cs
   where cs = [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4]
         cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @LineString)
 
--- | Two external rings
+-- | Two solids
 polygonIso :: Assertion
 polygonIso = cs' @?= cs
   where cs = [9,4,4,18,6,4,5,4,15,9,4,4,18,6,4,5,4,15]
         cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Polygon)
 
--- | One external, one internal
+-- | One holed
 polygonIso2 :: Assertion
 polygonIso2 = cs' @?= cs
   where cs = [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15]
+        cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Polygon)
+
+-- | One Holed, one solid
+polygonIso3 :: Assertion
+polygonIso3 = cs' @?= cs
+  where cs = [ 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15, 9, 2, 3, 26, 0, 2, 2, 0, 0, 1, 15
+             , 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15 ]
         cs' = fromRight $ R.uncommands . R.toCommands <$> (R.commands cs >>= R.fromCommands @Polygon)
 
 {-}
