@@ -92,7 +92,7 @@ testDecode = assert . isRight . decodeIt
 tileDecode :: BS.ByteString -> Assertion
 tileDecode bs = case decodeIt bs of
   Left e -> assertFailure e
-  Right t -> assert . isRight $ R.tile t
+  Right t -> assert . isRight $ R.fromProtobuf @VectorTile t
 
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
@@ -126,7 +126,7 @@ rawTest :: IO (Either String R.RawVectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
 encodeIso :: R.RawVectorTile -> Assertion
-encodeIso vt = assert . isRight . fmap R.untile $ R.tile vt
+encodeIso vt = assert . isRight . fmap R.toProtobuf $ R.fromProtobuf @VectorTile vt
 
 testTile :: R.RawVectorTile
 testTile = R.RawVectorTile $ putField [l]
