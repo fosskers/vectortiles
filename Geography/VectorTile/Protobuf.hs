@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 
 -- |
 -- Module    : Geography.VectorTile.Raw
@@ -102,7 +102,7 @@ import           Text.Printf.TH
 
 -- | A family of data types which can associated with concrete underlying
 -- Protobuf types.
-type family Protobuf a
+type family Protobuf a = pb | pb -> a
 type instance Protobuf VT.VectorTile = RawVectorTile
 type instance Protobuf VT.Layer = RawLayer
 type instance Protobuf VT.Val = RawVal
