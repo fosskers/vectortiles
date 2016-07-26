@@ -42,18 +42,21 @@
 
 module Geography.VectorTile
   ( -- * High-level Types
+    -- | This module also provides lenses for data field access,
+    -- as `VectorTile`s are highly nested objects.
     module Geography.VectorTile.VectorTile
   , -- * Protobuf Backend
     -- ** Conversions
     tile
   , untile
   -- ** ByteString Encoding / Decoding
-  , PB.decode
-  , PB.encode
+  , decode
+  , encode
   ) where
 
 import           Data.Text (Text)
-import qualified Geography.VectorTile.Protobuf as PB
+import qualified Geography.VectorTile.Protobuf.Internal as PB
+import           Geography.VectorTile.Protobuf (decode, encode)
 import           Geography.VectorTile.VectorTile
 
 ---
