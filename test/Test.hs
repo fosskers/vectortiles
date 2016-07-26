@@ -6,10 +6,10 @@ module Main where
 
 import qualified Data.ByteString as BS
 import           Data.Hex
-import           Data.ProtocolBuffers
+import           Data.ProtocolBuffers hiding (decode)
 import           Data.Serialize.Get
 import           Data.Serialize.Put
-import qualified Geography.VectorTile.Protobuf as R
+import qualified Geography.VectorTile.Protobuf.Internal as R
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Geography.VectorTile
@@ -46,7 +46,7 @@ suite op ls pl rd = testGroup "Unit Tests"
         [ testCase "One Point" $ encodeIso onePoint
         , testCase "One LineString" $ encodeIso oneLineString
         , testCase "One Polygon" $ encodeIso onePolygon
-        , testCase "roads.mvt" . encodeIso . fromRight $ R.decode rd
+        , testCase "roads.mvt" . encodeIso . fromRight $ decode rd
         ]
       ]
     , testGroup "Serialization Isomorphism"
@@ -92,7 +92,7 @@ testDecode = assert . isRight . decodeIt
 tileDecode :: BS.ByteString -> Assertion
 tileDecode bs = case decodeIt bs of
   Left e -> assertFailure e
-  Right t -> assert . isRight $ R.tile t
+  Right t -> assert . isRight $ R.fromProtobuf t
 
 fromRaw :: BS.ByteString -> Assertion
 fromRaw vt = case decodeIt vt of
@@ -126,7 +126,7 @@ rawTest :: IO (Either String R.RawVectorTile)
 rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
 
 encodeIso :: R.RawVectorTile -> Assertion
-encodeIso vt = assert . isRight . fmap R.untile $ R.tile vt
+encodeIso vt = assert . isRight . fmap R.toProtobuf $ R.fromProtobuf vt
 
 testTile :: R.RawVectorTile
 testTile = R.RawVectorTile $ putField [l]
