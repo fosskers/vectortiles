@@ -15,6 +15,17 @@
 -- Most of the details of Protobuf conversion are kept in
 -- "Geometry.VectorTile.Protobuf.Internal", a module which is not intended
 -- to be imported.
+--
+-- A user's main concern here should be the `Protobuffable` class, and its
+-- `VectorTile` instance. With it, one can do the following:
+--
+-- > import Geography.VectorTile.Protobuf
+-- >
+-- > decode bytes >>= fromProtobuf  -- Either Text VectorTile
+--
+-- which in fact is sugared in the top-level module of this library as:
+--
+-- > decode bytes >>= tile
 
 module Geography.VectorTile.Protobuf
   ( -- * Types

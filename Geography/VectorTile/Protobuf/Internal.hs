@@ -19,11 +19,11 @@
 --
 -- As this raw version of the data is hard to work with, in practice we convert
 -- to a more canonical Haskell type for further processing.
--- See `Geography.VectorTile` for the user-friendly version.
+-- See "Geography.VectorTile.VectorTile" for the user-friendly version.
 --
 -- Please import this module @qualified@ to avoid namespace clashes:
 --
--- > import qualified Geography.VectorTile.Protobuf as PB
+-- > import qualified Geography.VectorTile.Protobuf.Internal as PB
 
 module Geography.VectorTile.Protobuf.Internal
   ( -- * Types
@@ -43,28 +43,10 @@ module Geography.VectorTile.Protobuf.Internal
   , zig
   , unzig
     -- * Protobuf Conversions
-    -- ** From Protobuf
-    -- | Generally the `tile` function is the only one needed here. Usage:
-    --
-    -- > import qualified Geography.VectorTile.Protobuf as PB
-    -- >
-    -- > PB.decode someBytes >>= PB.tile
-    --
-    -- Note that since the "Data.ProtocolBuffers" library does not handle default
-    -- values, we handle those specifically defined in /vector_tile.proto/
-    -- explicitely here. See:
-    --
-    -- https://github.com/mapbox/vector-tile-spec/blob/master/2.1/vector_tile.proto
+    -- | Due to Protobuf Layers and Features having their data coupled,
+    -- we can't define a `Protobuffable` instance for `VT.Feature`s,
+    -- and instead must use the two functions below.
   , features
-    -- ** To Protobuf
-    -- | To convert from high-level data back into a form that can be encoded
-    -- into raw protobuf bytes, use:
-    --
-    -- > import qualified Geography.VectorTile.Protobuf as PB
-    -- >
-    -- > PB.encode $ PB.untile someTile
-    --
-    -- This is a pure process and will succeed every time.
   , unfeature
   ) where
 
