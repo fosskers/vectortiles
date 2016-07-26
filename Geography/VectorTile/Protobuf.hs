@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module    : Geography.VectorTile.Raw
@@ -26,12 +27,14 @@
 
 module Geography.VectorTile.Protobuf
   ( -- * Types
-    RawVectorTile(..)
+    Protobuf(..)
+  , Protobuffable(..)
+  , ProtobufGeom(..)
+  , RawVectorTile(..)
   , RawLayer(..)
   , RawVal(..)
   , RawFeature(..)
   , GeomType(..)
-  , ProtobufGeom(..)
     -- * Commands
   , Command(..)
   , commands
@@ -52,10 +55,7 @@ module Geography.VectorTile.Protobuf
     -- explicitely here. See:
     --
     -- https://github.com/mapbox/vector-tile-spec/blob/master/2.1/vector_tile.proto
-  , tile
-  , layer
   , features
-  , value
     -- ** To Protobuf
     -- | To convert from high-level data back into a form that can be encoded
     -- into raw protobuf bytes, use:
@@ -65,10 +65,7 @@ module Geography.VectorTile.Protobuf
     -- > PB.encode $ PB.untile someTile
     --
     -- This is a pure process and will succeed every time.
-  , untile
-  , unlayer
   , unfeature
-  , unval
     -- * ByteString Encoding / Decoding
   , decode
   , encode
@@ -102,6 +99,64 @@ import           Geography.VectorTile.Util
 import           Text.Printf.TH
 
 ---
+
+-- | A family of data types which can associated with concrete underlying
+-- Protobuf types.
+type family Protobuf a
+type instance Protobuf VT.VectorTile = RawVectorTile
+type instance Protobuf VT.Layer = RawLayer
+type instance Protobuf VT.Val = RawVal
+
+-- | A type which can be converted to and from an underlying Protobuf type,
+-- according to the `Protobuf` type family.
+class Protobuffable a where
+  fromProtobuf :: Protobuf a -> Either Text a
+  toProtobuf :: a -> Protobuf a
+
+instance Protobuffable VT.VectorTile where
+  fromProtobuf = fmap (VT.VectorTile . V.fromList) . mapM fromProtobuf . getField . _layers
+
+  toProtobuf vt = RawVectorTile { _layers = putField . V.toList . V.map toProtobuf $ VT._layers vt }
+
+instance Protobuffable VT.Layer where
+  fromProtobuf l = do
+    (ps,ls,polys) <- features keys vals . getField $ _features l
+    pure VT.Layer { VT._version = fromIntegral . getField $ _version l
+                  , VT._name = getField $ _name l
+                  , VT._points = ps
+                  , VT._linestrings = ls
+                  , VT._polygons = polys
+                  , VT._extent = maybe 4096 fromIntegral (getField $ _extent l) }
+      where keys = getField $ _keys l
+            vals = getField $ _values l
+
+  toProtobuf l = RawLayer { _version = putField . fromIntegral $ VT._version l
+                          , _name = putField $ VT._name l
+                          , _features = putField fs
+                          , _keys = putField ks
+                          , _values = putField $ map toProtobuf vs
+                          , _extent = putField . Just . fromIntegral $ VT._extent l }
+    where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
+          fs = V.toList $ V.concat [ V.map (unfeature ks vs) (VT._points l)
+                                   , V.map (unfeature ks vs) (VT._linestrings l)
+                                   , V.map (unfeature ks vs) (VT._polygons l) ]
+
+instance Protobuffable VT.Val where
+  fromProtobuf v = mtoe "Value decode: No legal Value type offered" $ fmap VT.St (getField $ _string v)
+    <|> fmap VT.Fl  (getField $ _float v)
+    <|> fmap VT.Do  (getField $ _double v)
+    <|> fmap VT.I64 (getField $ _int64 v)
+    <|> fmap VT.W64 (getField $ _uint64 v)
+    <|> fmap (\(Signed n) -> VT.S64 n) (getField $ _sint v)
+    <|> fmap VT.B   (getField $ _bool v)
+
+  toProtobuf (VT.St v)  = def { _string = putField $ Just v }
+  toProtobuf (VT.Fl v)  = def { _float = putField $ Just v }
+  toProtobuf (VT.Do v)  = def { _double = putField $ Just v }
+  toProtobuf (VT.I64 v) = def { _int64 = putField $ Just v }
+  toProtobuf (VT.W64 v) = def { _uint64 = putField $ Just v }
+  toProtobuf (VT.S64 v) = def { _sint = putField . Just $ Signed v }
+  toProtobuf (VT.B v)   = def { _bool = putField $ Just v }
 
 -- | A list of `RawLayer`s.
 data RawVectorTile = RawVectorTile { _layers :: Repeated 3 (Message RawLayer) }
@@ -308,25 +363,6 @@ encodeIO vt fp = BS.writeFile fp $ encode vt
 
 {- FROM PROTOBUF -}
 
--- | Convert a `RawVectorTile` of parsed protobuf data into a useable
--- `VectorTile`.
-tile :: RawVectorTile -> Either Text VT.VectorTile
-tile = fmap (VT.VectorTile . V.fromList) . mapM layer . getField . _layers
-
--- | Convert a single `RawLayer` of parsed protobuf data into a useable
--- `Layer`.
-layer :: RawLayer -> Either Text VT.Layer
-layer l = do
-  (ps,ls,polys) <- features keys vals . getField $ _features l
-  pure VT.Layer { VT._version = fromIntegral . getField $ _version l
-                , VT._name = getField $ _name l
-                , VT._points = ps
-                , VT._linestrings = ls
-                , VT._polygons = polys
-                , VT._extent = maybe 4096 fromIntegral (getField $ _extent l) }
-  where keys = getField $ _keys l
-        vals = getField $ _values l
-
 -- | Convert a list of `RawFeature`s of parsed protobuf data into `V.Vector`s
 -- of each of the three legal `ProtobufGeom` types.
 --
@@ -364,43 +400,12 @@ features keys vals fs = (,,) <$> ps <*> ls <*> polys
                             , VT._geometries = geos
                             } `V.cons` acc
 
--- | Convert a `RawVal` parsed from protobuf data into a useable
--- `Val`. The higher-level `Val` type better expresses the mutual exclusivity
--- of the /Value/ types.
-value :: RawVal -> Either Text VT.Val
-value v = mtoe "Value decode: No legal Value type offered" $ fmap VT.St (getField $ _string v)
-  <|> fmap VT.Fl  (getField $ _float v)
-  <|> fmap VT.Do  (getField $ _double v)
-  <|> fmap VT.I64 (getField $ _int64 v)
-  <|> fmap VT.W64 (getField $ _uint64 v)
-  <|> fmap (\(Signed n) -> VT.S64 n) (getField $ _sint v)
-  <|> fmap VT.B   (getField $ _bool v)
-
 getMeta :: [Text] -> [RawVal] -> [Word32] -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
-  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (value $ vals !! v)) M.empty kv
+  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (fromProtobuf $ vals !! v)) M.empty kv
 
 {- TO PROTOBUF -}
-
--- | Encode a high-level `VectorTile` back into its mid-level
--- `RawVectorTile` form.
-untile :: VT.VectorTile -> RawVectorTile
-untile vt = RawVectorTile { _layers = putField . V.toList . V.map unlayer $ VT._layers vt }
-
--- Has to get back all its metadata from its features
--- | Encode a high-level `Layer` back into its mid-level `RawLayer` form.
-unlayer :: VT.Layer -> RawLayer
-unlayer l = RawLayer { _version = putField . fromIntegral $ VT._version l
-                     , _name = putField $ VT._name l
-                     , _features = putField fs
-                     , _keys = putField ks
-                     , _values = putField $ map unval vs
-                     , _extent = putField . Just . fromIntegral $ VT._extent l }
-  where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
-        fs = V.toList $ V.concat [ V.map (unfeature ks vs) (VT._points l)
-                                 , V.map (unfeature ks vs) (VT._linestrings l)
-                                 , V.map (unfeature ks vs) (VT._polygons l) ]
 
 totalMeta :: V.Vector (VT.Feature G.Point) -> V.Vector (VT.Feature G.LineString) -> V.Vector (VT.Feature G.Polygon) -> ([Text], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
@@ -419,16 +424,6 @@ unfeature keys vals fe = RawFeature
                          }
   where tags = unpairs . map f . M.toList . VT._metadata
         f (k,v) = both (fromIntegral . fromJust) (k `elemIndex` keys, v `elemIndex` vals)
-
--- | Encode a high-level `Val` back into its mid-level `RawVal` form.
-unval :: VT.Val -> RawVal
-unval (VT.St v)  = def { _string = putField $ Just v }
-unval (VT.Fl v)  = def { _float = putField $ Just v }
-unval (VT.Do v)  = def { _double = putField $ Just v }
-unval (VT.I64 v) = def { _int64 = putField $ Just v }
-unval (VT.W64 v) = def { _uint64 = putField $ Just v }
-unval (VT.S64 v) = def { _sint = putField . Just $ Signed v }
-unval (VT.B v)   = def { _bool = putField $ Just v }
 
 {- UTIL -}
 

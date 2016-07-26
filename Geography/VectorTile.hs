@@ -45,12 +45,21 @@ module Geography.VectorTile
     module Geography.VectorTile.VectorTile
   , -- * Protobuf Backend
     -- ** Conversions
-    PB.tile
-  , PB.untile
+    tile
+  , untile
   -- ** ByteString Encoding / Decoding
   , PB.decode
   , PB.encode
   ) where
 
-import Geography.VectorTile.VectorTile
+import           Data.Text (Text)
 import qualified Geography.VectorTile.Protobuf as PB
+import           Geography.VectorTile.VectorTile
+
+---
+
+tile :: PB.RawVectorTile -> Either Text VectorTile
+tile = PB.fromProtobuf
+
+untile :: VectorTile -> PB.RawVectorTile
+untile = PB.toProtobuf
