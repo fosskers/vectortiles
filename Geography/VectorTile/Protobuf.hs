@@ -137,9 +137,9 @@ instance Protobuffable VT.Layer where
                           , _values = putField $ map toProtobuf vs
                           , _extent = putField . Just . fromIntegral $ VT._extent l }
     where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
-          fs = V.toList $ V.concat [ V.map (unfeature ks vs) (VT._points l)
-                                   , V.map (unfeature ks vs) (VT._linestrings l)
-                                   , V.map (unfeature ks vs) (VT._polygons l) ]
+          fs = V.toList $ V.concat [ V.map (unfeature ks vs Point) (VT._points l)
+                                   , V.map (unfeature ks vs LineString) (VT._linestrings l)
+                                   , V.map (unfeature ks vs Polygon) (VT._polygons l) ]
 
 instance Protobuffable VT.Val where
   fromProtobuf v = mtoe "Value decode: No legal Value type offered" $ fmap VT.St (getField $ _string v)
@@ -219,7 +219,6 @@ instance NFData GeomType
 class ProtobufGeom g where
   fromCommands :: [Command] -> Either Text (V.Vector g)
   toCommands :: V.Vector g -> [Command]
-  geomType :: g -> GeomType
 
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
@@ -230,8 +229,6 @@ instance ProtobufGeom G.Point where
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
   toCommands ps = [MoveTo $ evalState (U.mapM collapse $ U.convert ps) (0,0)]
-
-  geomType _ = Point
 
 -- | A valid `RawFeature` of linestrings must contain pairs of:
 --
@@ -248,8 +245,6 @@ instance ProtobufGeom G.LineString where
     where f (G.LineString ps) = do
             l <- U.mapM collapse ps
             pure [MoveTo . U.singleton $ U.head l, LineTo $ U.tail l]
-
-  geomType _ = LineString
 
 -- | A valid `RawFeature` of polygons must contain at least one sequence of:
 --
@@ -286,8 +281,6 @@ instance ProtobufGeom G.Polygon where
             l <- U.mapM collapse $ U.init p  -- Exclude the final point.
             let cs = [MoveTo . U.singleton $ U.head l, LineTo $ U.tail l, ClosePath]
             concat . V.cons cs <$> mapM f i
-
-  geomType _ = Polygon
 
 -- | The possible commands, and the values they hold.
 data Command = MoveTo (U.Vector (Int,Int))
@@ -415,13 +408,13 @@ totalMeta ps ls polys = (keys, vals)
         g = V.foldr (\x acc -> M.elems (VT._metadata x) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeature :: ProtobufGeom g => [Text] -> [VT.Val] -> VT.Feature g -> RawFeature
-unfeature keys vals fe = RawFeature
-                         { _featureId = putField . Just . fromIntegral $ VT._featureId fe
-                         , _tags = putField $ tags fe
-                         , _geom = putField . Just . geomType . V.head $ VT._geometries fe
-                         , _geometries = putField . uncommands . toCommands $ VT._geometries fe
-                         }
+unfeature :: ProtobufGeom g => [Text] -> [VT.Val] -> GeomType -> VT.Feature g -> RawFeature
+unfeature keys vals gt fe = RawFeature
+                            { _featureId = putField . Just . fromIntegral $ VT._featureId fe
+                            , _tags = putField $ tags fe
+                            , _geom = putField $ Just gt
+                            , _geometries = putField . uncommands . toCommands $ VT._geometries fe
+                            }
   where tags = unpairs . map f . M.toList . VT._metadata
         f (k,v) = both (fromIntegral . fromJust) (k `elemIndex` keys, v `elemIndex` vals)
 
