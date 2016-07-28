@@ -65,8 +65,8 @@ layerNames mvt = M.keys $ _layers t
   where t = fromRight $ decode mvt >>= tile
 
 firstPoly :: Text -> BS.ByteString -> Maybe Polygon
-firstPoly ln mvt = r ^? layers . ix ln . polygons . _head . geometries . _head
-  where r = fromRight $ decode mvt >>= tile
+firstPoly ln mvt = r ^? _Right . layers . ix ln . polygons . _head . geometries . _head
+  where r = decode mvt >>= tile
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b
