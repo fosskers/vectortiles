@@ -92,6 +92,7 @@ benchmark vectortiles-bench
                      , microlens >= 0.4 && < 0.5
                      , microlens-platform >= 0.3 && < 0.4
                      , text
+                     , containers
 
   hs-source-dirs:      bench
   main-is:             Bench.hs
