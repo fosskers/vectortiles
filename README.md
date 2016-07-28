@@ -75,7 +75,8 @@ You can run the benchmarks with `stack bench`, provided you have [the stack
 tool](http://docs.haskellstack.org/en/stable/README/). The following results
 are from a 2016 Lenovo ThinkPad Carbon X1 with an Intel Core i7 processor,
 comparing this library with a [Python library of similar
-functionality](https://github.com/mapzen/mapbox-vector-tile).
+functionality](https://github.com/mapzen/mapbox-vector-tile). All
+benchmarking code is available in the `bench` directory.
 
 *Note: 1 ms = 1000 μs*
 
@@ -83,9 +84,9 @@ functionality](https://github.com/mapzen/mapbox-vector-tile).
 
 | | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
 | --- | --- | --- | --- | --- |
-| CPython 3.5.2 | 59 μs | 69 μs | 82 μs | 73 ms |
-| PyPy 5.3 | 115 μs | 213 μs | 212 μs | 11.4 ms |
-| Haskell | 3.6 μs | 4.7 μs | 5.7 μs | 16.6 ms
+| CPython 3.5.2 | 63 μs | 70 μs | 84 μs | 76 ms |
+| PyPy 5.3 | 116 μs | 210 μs | 211 μs | 12 ms |
+| Haskell | 3.6 μs | 5 μs | 5.8 μs | 17.1 ms
 
 *The Haskell times are measuring data evaluation to their Normal Form (fully
 evaluated form).*
@@ -94,22 +95,22 @@ evaluated form).*
 
 ##### Encoding
 
-| | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
+| | One Point | One LineString | One Polygon | roads.mvt
 | --- | --- | --- | --- | --- |
-| CPython 3.5.2 | 212 μs | 268 μs | 667 μs | N/A |
-| Haskell | 3.1 μs | 3.8 μs | 4.5 μs | 10 ms
+| CPython 3.5.2 | 218 μs | 278 μs | 703 μs | N/A |
+| Haskell | 3.2 μs | 4.4 μs | 5 μs | 11.1 ms
 
 *Certain encoding benchmarks for Python were not possible.*
 
-##### Data Access (Fetching all Layer names)
+##### Data Access (Fetching first Polygon)
 
-| | One Point | One LineString | One Polygon | roads.mvt (40kb, 15 layers)
-| --- | --- | --- | --- | --- |
-| CPython 3.5.2 | 60 μs | 69 μs | 83 μs | 73 ms |
-| PyPy 5.3 | 162 μs | 124 μs | 103 μs | 7.7 ms |
-| Haskell | 3.1 μs | 3.4 μs | 3.5 μs | 6.5 ms
+| |  One Polygon | roads.mvt (`water` layer)
+| --- | --- | --- |
+| CPython 3.5.2 | 84 μs | 78 ms |
+| PyPy 5.3 | 31 μs | 7.9 ms |
+| Haskell | 3.4 μs | 6.8 ms |
 
-*The operation being benchmarked is `ByteString -> [Text]`, meaning we
+*The operation being benchmarked is `ByteString -> Polygon`, meaning we
 include the decoding time to account for speed gains afforded by laziness.*
 
 ##### Conclusions
