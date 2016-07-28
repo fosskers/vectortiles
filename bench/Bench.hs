@@ -1,11 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Control.Monad ((>=>))
 import           Criterion.Main
 import qualified Data.ByteString as BS
+import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Geography.VectorTile
-import qualified Geography.VectorTile.Protobuf as R
+import           Geography.VectorTile.Geometry (Polygon)
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
 
@@ -17,10 +20,10 @@ main = do
   ls <- BS.readFile "test/linestring.mvt"
   pl <- BS.readFile "test/polygon.mvt"
   rd <- BS.readFile "test/roads.mvt"
-  let op' = fromRight $ R.decode op >>= R.tile
-      ls' = fromRight $ R.decode ls >>= R.tile
-      pl' = fromRight $ R.decode pl >>= R.tile
-      rd' = fromRight $ R.decode rd >>= R.tile
+  let op' = fromRight $ decode op >>= tile
+      ls' = fromRight $ decode ls >>= tile
+      pl' = fromRight $ decode pl >>= tile
+      rd' = fromRight $ decode rd >>= tile
   defaultMain [ bgroup "Decoding"
                 [ bgroup "onepoint.mvt" $ decodes op
                 , bgroup "linestring.mvt" $ decodes ls
@@ -40,22 +43,30 @@ main = do
                   , bench "One Polygon" $ nf layerNames pl
                   , bench "roads.mvt" $ nf layerNames rd
                   ]
+                , bgroup "First Polygon"
+                  [ bench "One Polygon" $ nf (firstPoly "OnePolygon") op
+                  , bench "roads.mvt - water layer" $ nf (firstPoly "water") rd
+                  ]
                 ]
               ]
 
 decodes :: BS.ByteString -> [Benchmark]
-decodes bs = [ bench "Raw.VectorTile" $ nf R.decode bs
-             , bench "VectorTile" $ nf (R.decode >=> R.tile) bs
+decodes bs = [ bench "Raw.VectorTile" $ nf decode bs
+             , bench "VectorTile" $ nf (decode >=> tile) bs
              ]
 
 encodes :: VectorTile -> [Benchmark]
-encodes vt = [ bench "Raw.VectorTile" $ nf R.untile vt
-             , bench "ByteString" $ nf (R.encode . R.untile) vt
+encodes vt = [ bench "Raw.VectorTile" $ nf untile vt
+             , bench "ByteString" $ nf (encode . untile) vt
              ]
 
 layerNames :: BS.ByteString -> [Text]
-layerNames mvt = t ^.. layers . each . name
-  where t = fromRight $ R.decode mvt >>= R.tile
+layerNames mvt = M.keys $ _layers t
+  where t = fromRight $ decode mvt >>= tile
+
+firstPoly :: Text -> BS.ByteString -> Maybe Polygon
+firstPoly ln mvt = r ^? _Right . layers . ix ln . polygons . _head . geometries . _head
+  where r = decode mvt >>= tile
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b

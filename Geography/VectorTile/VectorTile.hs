@@ -45,15 +45,13 @@ import           Geography.VectorTile.Geometry
 
 ---
 
--- | A high-level representation of a Vector Tile. At its simplest, a tile
--- is just a list of `Layer`s.
---
--- There is potential to implement `_layers` as a `M.Map`, with its String-based
--- `name` as a key.
-newtype VectorTile = VectorTile { _layers :: V.Vector Layer } deriving (Eq,Show,Generic)
+-- | A high-level representation of a Vector Tile. Implemented internally
+-- as a `M.Map`, so that access to individual layers can be fast if you
+-- know the layer names ahead of time.
+newtype VectorTile = VectorTile { _layers :: M.Map Text Layer } deriving (Eq,Show,Generic)
 
--- | > Lens' VectorTile (Vector Layer)
-layers :: Functor f => (V.Vector Layer -> f (V.Vector Layer)) -> VectorTile -> f VectorTile
+-- | > Lens' VectorTile (Map Text Layer)
+layers :: Functor f => (M.Map Text Layer -> f (M.Map Text Layer)) -> VectorTile -> f VectorTile
 layers f v = VectorTile <$> f (_layers v)
 {-# INLINE layers #-}
 

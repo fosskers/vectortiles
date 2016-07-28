@@ -16,6 +16,10 @@ def layerNames(data):
     decoded = mapbox_vector_tile.decode(data, y_coord_down=True)
     return list(decoded.keys())
 
+def firstPoly(data, layerName):
+    decoded = mapbox_vector_tile.decode(data, y_coord_down=True)
+    return decoded[layerName]['features'][0]['geometry'][0]
+
 # Benchmark the decoding process.
 def benchDecode(file):
     print('Benchmarking {}'.format(file))
@@ -51,6 +55,20 @@ def benchFetch(file):
     the_time = timeit.timeit(wrapped, number=iters)
 
     print('Average: {} ms'.format(1000 * the_time / iters))
+
+def benchPoly(file, layerName):
+    print('Benchmarking {} - {}'.format(file, layerName))
+
+    # Exclude the IO from the benchmark timing.
+    with open(file, 'rb') as f:
+        data = f.read()
+
+    iters = 100
+    wrapped = wrapper(firstPoly, data, layerName)
+    the_time = timeit.timeit(wrapped, number=iters)
+
+    print('Average: {} ms'.format(1000 * the_time / iters))
+
 
 print('*** DECODING ***')
 
@@ -101,5 +119,7 @@ benchFetch('test/onepoint.mvt')
 benchFetch('test/linestring.mvt')
 benchFetch('test/polygon.mvt')
 benchFetch('test/roads.mvt')
+benchPoly('test/polygon.mvt', 'OnePolygon')
+benchPoly('test/roads.mvt', 'water')
 
 print("\nDone")

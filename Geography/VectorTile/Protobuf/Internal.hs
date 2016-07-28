@@ -89,9 +89,11 @@ class Protobuffable a where
   toProtobuf :: a -> Protobuf a
 
 instance Protobuffable VT.VectorTile where
-  fromProtobuf = fmap (VT.VectorTile . V.fromList) . mapM fromProtobuf . getField . _layers
+  fromProtobuf raw = do
+    ls <- mapM fromProtobuf . getField $ _layers raw
+    pure . VT.VectorTile . M.fromList $ map (\l -> (VT._name l, l)) ls
 
-  toProtobuf vt = RawVectorTile { _layers = putField . V.toList . V.map toProtobuf $ VT._layers vt }
+  toProtobuf vt = RawVectorTile { _layers = putField . map toProtobuf . M.elems $ VT._layers vt }
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
