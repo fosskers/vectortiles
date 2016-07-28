@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Control.Monad ((>=>))
@@ -6,6 +8,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Geography.VectorTile
+import           Geography.VectorTile.Geometry (Polygon)
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
 
@@ -40,6 +43,10 @@ main = do
                   , bench "One Polygon" $ nf layerNames pl
                   , bench "roads.mvt" $ nf layerNames rd
                   ]
+                , bgroup "First Polygon"
+                  [ bench "One Polygon" $ nf (firstPoly "OnePolygon") op
+                  , bench "roads.mvt - water layer" $ nf (firstPoly "water") rd
+                  ]
                 ]
               ]
 
@@ -56,6 +63,10 @@ encodes vt = [ bench "Raw.VectorTile" $ nf untile vt
 layerNames :: BS.ByteString -> [Text]
 layerNames mvt = M.keys $ _layers t
   where t = fromRight $ decode mvt >>= tile
+
+firstPoly :: Text -> BS.ByteString -> Maybe Polygon
+firstPoly ln mvt = r ^? layers . ix ln . polygons . _head . geometries . _head
+  where r = fromRight $ decode mvt >>= tile
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b
