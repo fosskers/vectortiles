@@ -40,7 +40,7 @@ pattern Point :: Int -> Int -> (Int, Int)
 pattern Point{x, y} = (x, y)
 
 -- | Points are just vectors in R2, and thus form a Vector space.
-instance Monoid Point where
+instance {-# OVERLAPPING #-} Monoid Point where
   mempty = Point 0 0
   (Point a b) `mappend` (Point a' b') = Point (a + a') (b + b')
 
