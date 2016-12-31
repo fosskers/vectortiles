@@ -54,7 +54,6 @@ import           Control.Applicative ((<|>))
 import           Control.DeepSeq (NFData)
 import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
-import qualified Data.ByteString as BS
 import           Data.Foldable (foldrM, foldlM)
 import           Data.Int
 import           Data.List (nub, elemIndex)
@@ -200,7 +199,7 @@ class ProtobufGeom g where
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  fromCommands (MoveTo ps : []) = Right . U.convert $ evalState (U.mapM expand ps) (0,0)
+  fromCommands [MoveTo ps] = Right . U.convert $ evalState (U.mapM expand ps) (0,0)
   fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
   fromCommands [] = Left "No points given!"
 
@@ -307,8 +306,8 @@ commands (n:ns) = parseCmd n >>= f
 -- and Z-encoded Parameter integer forms.
 uncommands :: [Command] -> [Word32]
 uncommands = U.toList . U.concat . map f
-  where f (MoveTo ps) = (U.cons $ unparseCmd (1, U.length ps)) $ params ps
-        f (LineTo ls) = (U.cons $ unparseCmd (2, U.length ls)) $ params ls
+  where f (MoveTo ps) = U.cons (unparseCmd (1, U.length ps)) $ params ps
+        f (LineTo ls) = U.cons (unparseCmd (2, U.length ls)) $ params ls
         f ClosePath = U.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
 
 {- FROM PROTOBUF -}
@@ -353,7 +352,7 @@ features keys vals fs = (,,) <$> ps <*> ls <*> polys
 getMeta :: [Text] -> [RawVal] -> [Word32] -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
-  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> (fromProtobuf $ vals !! v)) M.empty kv
+  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> fromProtobuf (vals !! v)) M.empty kv
 
 {- TO PROTOBUF -}
 

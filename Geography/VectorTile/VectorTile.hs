@@ -70,32 +70,32 @@ data Layer = Layer { _version :: Int  -- ^ The version of the spec we follow. Sh
 
 -- | > Lens' Layer Int
 version :: Functor f => (Int -> f Int) -> Layer -> f Layer
-version f l = fmap (\v -> l { _version = v }) $ f (_version l)
+version f l = (\v -> l { _version = v }) <$> f (_version l)
 {-# INLINE version #-}
 
 -- | > Lens' Layer Text
 name :: Functor f => (Text -> f Text) -> Layer -> f Layer
-name f l = fmap (\v -> l { _name = v }) $ f (_name l)
+name f l = (\v -> l { _name = v }) <$> f (_name l)
 {-# INLINE name #-}
 
 -- | > Lens' Layer (Vector (Feature Point))
 points :: Functor f => (V.Vector (Feature Point) -> f (V.Vector (Feature Point))) -> Layer -> f Layer
-points f l = fmap (\v -> l { _points = v }) $ f (_points l)
+points f l = (\v -> l { _points = v }) <$> f (_points l)
 {-# INLINE points #-}
 
 -- | > Lens' Layer (Vector (Feature LineString)))
 linestrings :: Functor f => (V.Vector (Feature LineString) -> f (V.Vector (Feature LineString))) -> Layer -> f Layer
-linestrings f l = fmap (\v -> l { _linestrings = v }) $ f (_linestrings l)
+linestrings f l = (\v -> l { _linestrings = v }) <$> f (_linestrings l)
 {-# INLINE linestrings #-}
 
 -- | > Lens' Layer (Vector (Feature Polygon)))
 polygons :: Functor f => (V.Vector (Feature Polygon) -> f (V.Vector (Feature Polygon))) -> Layer -> f Layer
-polygons f l = fmap (\v -> l { _polygons = v }) $ f (_polygons l)
+polygons f l = (\v -> l { _polygons = v }) <$> f (_polygons l)
 {-# INLINE polygons #-}
 
 -- | > Lens' Layer Int
 extent :: Functor f => (Int -> f Int) -> Layer -> f Layer
-extent f l = fmap (\v -> l { _extent = v }) $ f (_extent l)
+extent f l = (\v -> l { _extent = v }) <$> f (_extent l)
 {-# INLINE extent #-}
 
 instance NFData Layer
@@ -119,17 +119,17 @@ data Feature g = Feature { _featureId :: Int  -- ^ Default: 0
 
 -- | > Lens' (Feature g) Int
 featureId :: Functor f => (Int -> f Int) -> Feature g -> f (Feature g)
-featureId f l = fmap (\v -> l { _featureId = v }) $ f (_featureId l)
+featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
 {-# INLINE featureId #-}
 
 -- | > Lens' (Feature g) (Map Text Val)
 metadata :: Functor f => (M.Map Text Val -> f (M.Map Text Val)) -> Feature g -> f (Feature g)
-metadata f l = fmap (\v -> l { _metadata = v }) $ f (_metadata l)
+metadata f l = (\v -> l { _metadata = v }) <$> f (_metadata l)
 {-# INLINE metadata #-}
 
 -- | > Lens' (Feature g) (Vector g)
 geometries :: Functor f => (V.Vector g -> f (V.Vector g)) -> Feature g -> f (Feature g)
-geometries f l = fmap (\v -> l { _geometries = v }) $ f (_geometries l)
+geometries f l = (\v -> l { _geometries = v }) <$> f (_geometries l)
 {-# INLINE geometries #-}
 
 instance NFData g => NFData (Feature g)
