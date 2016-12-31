@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2.0.1
+-------
+- Remove the redundant `Monoid` instance for `Point`.
+
 1.2.0
 -----
 
