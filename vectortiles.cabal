@@ -15,7 +15,9 @@ description:         GIS Vector Tiles, as defined by Mapbox.
                      The order in which to explore the modules of this library is as follows:
                      .
                      1. "Geography.VectorTile.VectorTile" (high-level types)
+                     .
                      2. "Geography.VectorTile.Geometry" (typical GIS geometry types)
+                     .
                      3. "Geography.VectorTile.Protobuf" (mid-level representation of parsed protobuf data with conversion functions)
 
 homepage:            https://github.com/fosskers/vectortiles

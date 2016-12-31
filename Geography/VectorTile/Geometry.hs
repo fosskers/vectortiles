@@ -39,11 +39,6 @@ type Point = (Int,Int)
 pattern Point :: Int -> Int -> (Int, Int)
 pattern Point{x, y} = (x, y)
 
--- | Points are just vectors in R2, and thus form a Vector space.
-instance Monoid Point where
-  mempty = Point 0 0
-  (Point a b) `mappend` (Point a' b') = Point (a + a') (b + b')
-
 -- | /newtype/ compiles away to expose only the `U.Vector` of unboxed `Point`s
 -- at runtime.
 newtype LineString = LineString { lsPoints :: U.Vector Point } deriving (Eq,Show,Generic)
