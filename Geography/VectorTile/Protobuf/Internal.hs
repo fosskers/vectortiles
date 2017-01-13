@@ -67,10 +67,10 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import           GHC.Generics (Generic)
-import qualified Geography.VectorTile.VectorTile as VT
 import qualified Geography.VectorTile.Geometry as G
 import           Geography.VectorTile.Util
-import           Text.Printf.TH
+import qualified Geography.VectorTile.VectorTile as VT
+import           Text.Printf
 
 ---
 
@@ -200,7 +200,7 @@ class ProtobufGeom g where
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
   fromCommands [MoveTo ps] = Right . U.convert $ evalState (U.mapM expand ps) (0,0)
-  fromCommands (c:_) = Left $ [st|Invalid command found in Point feature: %s|] (show c)
+  fromCommands (c:_) = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands [] = Left "No points given!"
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
@@ -243,7 +243,7 @@ instance ProtobufGeom G.Polygon where
             po <- flip U.snoc here <$> U.mapM expand (U.cons h ps)
             fmap (V.cons (G.Polygon po V.empty)) <$> f rs
           f [] = pure $ Right V.empty
-          f _  = pure . Left $ [st|Polygon decode: Invalid command sequence given: %s|] (show cs)
+          f _  = pure . Left . pack $ printf "Polygon decode: Invalid command sequence given: %s" (show cs)
           g acc p | G.area p > 0 = do  -- New external rings.
                       curr <- get
                       put p
@@ -279,7 +279,7 @@ parseCmd n = case (cmd,count) of
   (2,m) -> Right $ both fromIntegral (2,m)
   (7,1) -> Right (7,1)
   (7,m) -> Left $ "ClosePath was given a parameter count: " <> pack (show m)
-  (m,_) -> Left $ [st|Invalid command integer %d found in: %X|] m n
+  (m,_) -> Left . pack $ printf "Invalid command integer %d found in: %X" m n
   where cmd = n .&. 7
         count = shift n (-3)
 

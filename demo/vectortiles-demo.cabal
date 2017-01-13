@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                vectortiles-demo
-version:             1.0.0
+version:             1.0.0.1
 synopsis:            A demo for the vectortiles library.
 -- description:
 homepage:            https://github.com/fosskers/vectortiles
