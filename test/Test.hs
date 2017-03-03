@@ -24,12 +24,13 @@ main = do
   ls <- BS.readFile "test/linestring.mvt"
   pl <- BS.readFile "test/polygon.mvt"
   rd <- BS.readFile "test/roads.mvt"
-  defaultMain $ suite op ls pl rd
+  cl <- BS.readFile "test/clearlake.mvt"
+  defaultMain $ suite op ls pl rd cl
 
 {- SUITES -}
 
-suite :: BS.ByteString -> BS.ByteString -> BS.ByteString -> BS.ByteString -> TestTree
-suite op ls pl rd = testGroup "Unit Tests"
+suite :: BS.ByteString -> BS.ByteString -> BS.ByteString -> BS.ByteString -> BS.ByteString -> TestTree
+suite op ls pl rd cl = testGroup "Unit Tests"
   [ testGroup "Protobuf"
     [ testGroup "Decoding"
       [ testCase "onepoint.mvt -> Raw.Tile" $ testOnePoint op
@@ -40,6 +41,7 @@ suite op ls pl rd = testGroup "Unit Tests"
       , testCase "linestring.mvt -> VectorTile" $ tileDecode ls
       , testCase "polygon.mvt -> VectorTile" $ tileDecode pl
       , testCase "roads.mvt -> VectorTile" $ tileDecode rd
+      , testCase "clearlake.mvt -> VectorTile" $ tileDecode cl
       ]
     , testGroup "Encoding"
       [ testGroup "RawVectorTile <-> VectorTile"
