@@ -37,6 +37,7 @@ suite op ls pl rd cl = testGroup "Unit Tests"
       , testCase "linestring.mvt -> Raw.Tile" $ testLineString ls
       , testCase "polygon.mvt -> Raw.Tile" $ testPolygon pl
       , testCase "roads.mvt -> Raw.Tile" $ testDecode rd
+      , testCase "clearlake.mvt -> Raw.Tile" $ testDecode cl
       , testCase "onepoint.mvt -> VectorTile" $ tileDecode op
       , testCase "linestring.mvt -> VectorTile" $ tileDecode ls
       , testCase "polygon.mvt -> VectorTile" $ tileDecode pl
