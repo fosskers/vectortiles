@@ -8,7 +8,7 @@
 
 -- |
 -- Module    : Geography.VectorTile.Protobuf.Internal
--- Copyright : (c) Azavea, 2016
+-- Copyright : (c) Azavea, 2016 - 2017
 -- License   : Apache 2
 -- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
 --
@@ -56,7 +56,7 @@ import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
 import           Data.Foldable (foldrM, foldlM)
 import           Data.Int
-import           Data.List (nub, elemIndex)
+import           Data.List (nub)
 import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
 import           Data.Monoid
@@ -113,9 +113,10 @@ instance Protobuffable VT.Layer where
                           , _values = putField $ map toProtobuf vs
                           , _extent = putField . Just . fromIntegral $ VT._extent l }
     where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
-          fs = V.toList $ V.concat [ V.map (unfeature ks vs Point) (VT._points l)
-                                   , V.map (unfeature ks vs LineString) (VT._linestrings l)
-                                   , V.map (unfeature ks vs Polygon) (VT._polygons l) ]
+          (km,vm) = (M.fromList $ zip ks [0..], M.fromList $ zip vs [0..])
+          fs = V.toList $ V.concat [ V.map (unfeature km vm Point) (VT._points l)
+                                   , V.map (unfeature km vm LineString) (VT._linestrings l)
+                                   , V.map (unfeature km vm Polygon) (VT._polygons l) ]
 
 instance Protobuffable VT.Val where
   fromProtobuf v = mtoe "Value decode: No legal Value type offered" $ fmap VT.St (getField $ _string v)
@@ -360,19 +361,18 @@ totalMeta :: V.Vector (VT.Feature G.Point) -> V.Vector (VT.Feature G.LineString)
 totalMeta ps ls polys = (keys, vals)
   where keys = S.toList . S.unions $ f ps <> f ls <> f polys
         vals = nub . concat $ g ps <> g ls <> g polys  -- `nub` is O(n^2)
-        f = V.foldr (\x acc -> M.keysSet (VT._metadata x) : acc) []
-        g = V.foldr (\x acc -> M.elems (VT._metadata x) : acc) []
+        f = V.foldr (\feat acc -> M.keysSet (VT._metadata feat) : acc) []
+        g = V.foldr (\feat acc -> M.elems (VT._metadata feat) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeature :: ProtobufGeom g => [Text] -> [VT.Val] -> GeomType -> VT.Feature g -> RawFeature
+unfeature :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType -> VT.Feature g -> RawFeature
 unfeature keys vals gt fe = RawFeature
                             { _featureId = putField . Just . fromIntegral $ VT._featureId fe
                             , _tags = putField $ tags fe
                             , _geom = putField $ Just gt
-                            , _geometries = putField . uncommands . toCommands $ VT._geometries fe
-                            }
+                            , _geometries = putField . uncommands . toCommands $ VT._geometries fe }
   where tags = unpairs . map f . M.toList . VT._metadata
-        f (k,v) = both (fromIntegral . fromJust) (k `elemIndex` keys, v `elemIndex` vals)
+        f (k,v) = both (fromIntegral . fromJust) (M.lookup k keys, M.lookup v vals)
 
 {- UTIL -}
 

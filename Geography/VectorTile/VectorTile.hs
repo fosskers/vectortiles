@@ -3,7 +3,7 @@
 
 -- |
 -- Module    : Geography.VectorTile.VectorTile
--- Copyright : (c) Azavea, 2016
+-- Copyright : (c) Azavea, 2016 - 2017
 -- License   : Apache 2
 -- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
 --
@@ -137,6 +137,6 @@ instance NFData g => NFData (Feature g)
 -- | Legal Metadata /Value/ types. Note that `S64` are Z-encoded automatically
 -- by the underlying "Data.ProtocolBuffers" library.
 data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
-         deriving (Eq,Show,Generic)
+         deriving (Eq,Ord,Show,Generic)
 
 instance NFData Val
