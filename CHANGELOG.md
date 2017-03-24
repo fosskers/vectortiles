@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.2.0.3
+-------
+
+- Performance improvements during metadata encoding.
+
 1.2.0.2
 -------
 - Bump `vector` upper bound.
