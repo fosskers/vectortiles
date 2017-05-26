@@ -1,0 +1,3 @@
+py2env/*
+pypyenv/*
+*.tar.gz
