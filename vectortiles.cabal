@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           vectortiles
-version:        1.2.0.4
+version:        1.2.0.5
 synopsis:       GIS Vector Tiles, as defined by Mapbox.
 description:    GIS Vector Tiles, as defined by Mapbox.
                 .
@@ -91,7 +91,7 @@ benchmark vectortiles-bench
     , protobuf >=0.2.1.1 && <0.3
     , text >=1.2 && <1.3
     , vector >=0.11 && <0.13
-    , criterion >=1.1 && <1.2
+    , criterion >=1.1 && <1.3
     , microlens >=0.4 && <0.5
     , microlens-platform >=0.3 && <0.4
     , vectortiles

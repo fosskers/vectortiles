@@ -2,7 +2,6 @@ VectorTiles
 ===========
 
 [![Build Status](https://travis-ci.org/fosskers/vectortiles.svg?branch=master)](https://travis-ci.org/fosskers/vectortiles)
-[![Coverage Status](https://coveralls.io/repos/github/fosskers/vectortiles/badge.svg?branch=master)](https://coveralls.io/github/fosskers/vectortiles?branch=master)
 [![Hackage](https://img.shields.io/hackage/v/vectortiles.svg?style=flat)](https://hackage.haskell.org/package/vectortiles)
 [![Stackage Nightly](http://stackage.org/package/vectortiles/badge/nightly)](http://stackage.org/nightly/package/vectortiles)
 [![Stackage LTS](http://stackage.org/package/vectortiles/badge/lts)](http://stackage.org/lts/package/vectortiles)
