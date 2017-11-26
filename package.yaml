@@ -1,5 +1,5 @@
 name: vectortiles
-version: '1.2.0.5'
+version: '1.2.0.6'
 synopsis: GIS Vector Tiles, as defined by Mapbox.
 description: ! 'GIS Vector Tiles, as defined by Mapbox.
 
@@ -45,7 +45,7 @@ ghc-options:
   - -fwarn-unused-binds
 
 dependencies:
-  - base >=4.9 && <4.10
+  - base >=4.9 && <4.11
   - bytestring
   - cereal >=0.5 && <0.6
   - containers

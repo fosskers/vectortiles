@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Demo
 
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base >=4.9 && <4.11
                      , bytestring
                      , containers
                      , directory
