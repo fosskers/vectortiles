@@ -56,7 +56,6 @@ import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
 import           Data.Foldable (foldrM, foldlM)
 import           Data.Int
-import           Data.List (nub)
 import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
 import           Data.Monoid
@@ -360,9 +359,9 @@ getMeta keys vals tags = do
 totalMeta :: V.Vector (VT.Feature G.Point) -> V.Vector (VT.Feature G.LineString) -> V.Vector (VT.Feature G.Polygon) -> ([Text], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
   where keys = S.toList . S.unions $ f ps <> f ls <> f polys
-        vals = nub . concat $ g ps <> g ls <> g polys  -- `nub` is O(n^2)
+        vals = S.toList . S.unions $ g ps <> g ls <> g polys
         f = V.foldr (\feat acc -> M.keysSet (VT._metadata feat) : acc) []
-        g = V.foldr (\feat acc -> M.elems (VT._metadata feat) : acc) []
+        g = V.foldr (\feat acc -> S.fromList (M.elems (VT._metadata feat)) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
 unfeature :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType -> VT.Feature g -> RawFeature

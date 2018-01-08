@@ -81,4 +81,5 @@ benchmarks:
       - criterion >=1.1 && <1.3
       - microlens >=0.4 && <0.5
       - microlens-platform >=0.3 && <0.4
+      - random == 1.1.*
       - vectortiles
