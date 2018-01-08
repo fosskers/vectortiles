@@ -1,0 +1,17 @@
+Running 1 benchmarks...
+Benchmark vectortiles-bench: RUNNING...
+benchmarking Sitewisely/Writing/100,000 metadatas
+time                 538.1 ms   (NaN s .. 709.8 ms)
+                     0.989 R²   (0.969 R² .. 1.000 R²)
+mean                 401.5 ms   (316.2 ms .. 445.3 ms)
+std dev              73.95 ms   (0.0 s .. 75.75 ms)
+variance introduced by outliers: 47% (moderately inflated)
+
+benchmarking Sitewisely/Writing/1,000,000 metadatas
+time                 8.413 s    (8.245 s .. 8.642 s)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 8.297 s    (8.238 s .. 8.341 s)
+std dev              68.11 ms   (0.0 s .. 77.08 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
+Benchmark vectortiles-bench: FINISH

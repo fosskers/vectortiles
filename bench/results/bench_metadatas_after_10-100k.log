@@ -1,0 +1,38 @@
+Running 1 benchmarks...
+Benchmark vectortiles-bench: RUNNING...
+benchmarking Sitewisely/Writing/10 metadatas
+time                 520.8 μs   (517.5 μs .. 523.8 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 336.0 μs   (316.5 μs .. 352.4 μs)
+std dev              30.51 μs   (22.43 μs .. 42.76 μs)
+variance introduced by outliers: 67% (severely inflated)
+
+benchmarking Sitewisely/Writing/100 metadatas
+time                 708.1 μs   (700.8 μs .. 714.3 μs)
+                     0.999 R²   (0.997 R² .. 1.000 R²)
+mean                 474.4 μs   (447.9 μs .. 496.3 μs)
+std dev              49.06 μs   (34.55 μs .. 66.04 μs)
+variance introduced by outliers: 70% (severely inflated)
+
+benchmarking Sitewisely/Writing/1,000 metadatas
+time                 3.135 ms   (2.999 ms .. 3.248 ms)
+                     0.983 R²   (0.973 R² .. 0.990 R²)
+mean                 2.119 ms   (1.931 ms .. 2.327 ms)
+std dev              490.5 μs   (437.4 μs .. 563.1 μs)
+variance introduced by outliers: 90% (severely inflated)
+
+benchmarking Sitewisely/Writing/10,000 metadatas
+time                 35.48 ms   (34.66 ms .. 36.27 ms)
+                     0.998 R²   (0.997 R² .. 0.999 R²)
+mean                 31.00 ms   (29.64 ms .. 32.06 ms)
+std dev              2.348 ms   (1.579 ms .. 2.886 ms)
+variance introduced by outliers: 25% (moderately inflated)
+
+benchmarking Sitewisely/Writing/100,000 metadatas
+time                 449.4 ms   (440.9 ms .. 453.7 ms)
+                     1.000 R²   (1.000 R² .. NaN R²)
+mean                 443.5 ms   (441.1 ms .. 444.9 ms)
+std dev              2.170 ms   (0.0 s .. 2.419 ms)
+variance introduced by outliers: 19% (moderately inflated)
+
+Benchmark vectortiles-bench: FINISH
