@@ -1,5 +1,5 @@
 name: vectortiles
-version: '1.2.0.6'
+version: '1.2.0.7'
 synopsis: GIS Vector Tiles, as defined by Mapbox.
 description: ! 'GIS Vector Tiles, as defined by Mapbox.
 
@@ -27,7 +27,7 @@ description: ! 'GIS Vector Tiles, as defined by Mapbox.
   data with conversion functions)'
 category: Geography
 author: Colin Woodbury
-maintainer: cwoodbury@azavea.com
+maintainer: colingw@gmail.com
 license: Apache-2.0
 homepage: https://github.com/fosskers/vectortiles
 
@@ -43,6 +43,10 @@ extra-source-files:
 ghc-options:
   - -fwarn-unused-imports
   - -fwarn-unused-binds
+  - -fwarn-name-shadowing
+  - -fwarn-unused-matches
+  - -fwarn-incomplete-patterns
+  - -Wincomplete-uni-patterns
 
 dependencies:
   - base >=4.9 && <4.11
@@ -78,7 +82,7 @@ benchmarks:
     ghc-options:
       - -threaded
     dependencies:
-      - criterion >=1.1 && <1.3
+      - criterion >=1.1 && <1.4
       - microlens >=0.4 && <0.5
       - microlens-platform >=0.3 && <0.4
       - vectortiles
