@@ -1,3 +1,7 @@
 language: nix
 
-script: nix-build --attr vectortiles release.nix
+before_install: nix-env --install --attr nixpkgs.haskellPackages.hpack
+
+script:
+  - hpack
+  - nix-build --attr vectortiles release.nix
