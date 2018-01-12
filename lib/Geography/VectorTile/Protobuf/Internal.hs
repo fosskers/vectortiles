@@ -30,11 +30,6 @@ module Geography.VectorTile.Protobuf.Internal
     Protobuf(..)
   , Protobuffable(..)
   , ProtobufGeom(..)
-  , RawVectorTile(..)
-  , RawLayer(..)
-  , RawVal(..)
-  , RawFeature(..)
-  , GeomType(..)
     -- * Commands
   , Command(..)
   , commands
@@ -51,145 +46,103 @@ module Geography.VectorTile.Protobuf.Internal
   ) where
 
 import           Control.Applicative ((<|>))
-import           Control.DeepSeq (NFData)
 import           Control.Monad.Trans.State.Lazy
 import           Data.Bits
-import           Data.Foldable (foldrM, foldlM)
+import           Data.Foldable (foldrM, foldlM, toList)
 import           Data.Int
 import           Data.List (nub)
-import qualified Data.Map.Lazy as M
+import qualified Data.Map.Strict as M
+import qualified Data.Sequence as Seq
 import           Data.Maybe (fromJust)
 import           Data.Monoid
-import           Data.ProtocolBuffers hiding (decode, encode)
 import qualified Data.Set as S
 import           Data.Text (Text, pack)
+import           Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
+import           Data.Text.Lazy (toStrict, fromStrict)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
-import           GHC.Generics (Generic)
 import qualified Geography.VectorTile.Geometry as G
 import           Geography.VectorTile.Util
 import qualified Geography.VectorTile.VectorTile as VT
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Feature as Feature
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.GeomType as GeomType
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Layer as Layer
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Value as Value
 import           Text.Printf
+import           Text.ProtocolBuffers.Basic (defaultValue, Utf8(..), utf8)
 
 ---
 
 -- | A family of data types which can associated with concrete underlying
 -- Protobuf types.
 type family Protobuf a = pb | pb -> a
-type instance Protobuf VT.VectorTile = RawVectorTile
-type instance Protobuf VT.Layer = RawLayer
-type instance Protobuf VT.Val = RawVal
+type instance Protobuf VT.VectorTile = Tile.Tile
+type instance Protobuf VT.Layer = Layer.Layer
+type instance Protobuf VT.Val = Value.Value
 
 -- | A type which can be converted to and from an underlying Protobuf type,
 -- according to the `Protobuf` type family.
 class Protobuffable a where
   fromProtobuf :: Protobuf a -> Either Text a
-  toProtobuf :: a -> Protobuf a
+  toProtobuf   :: a -> Protobuf a
 
 instance Protobuffable VT.VectorTile where
   fromProtobuf raw = do
-    ls <- mapM fromProtobuf . getField $ _layers raw
+    ls <- traverse fromProtobuf . toList $ Tile.layers raw
     pure . VT.VectorTile . M.fromList $ map (\l -> (VT._name l, l)) ls
 
-  toProtobuf vt = RawVectorTile { _layers = putField . map toProtobuf . M.elems $ VT._layers vt }
+  toProtobuf vt = Tile.Tile { Tile.layers    = Seq.fromList . map toProtobuf . M.elems $ VT._layers vt
+                            , Tile.ext'field = defaultValue }
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- features keys vals . getField $ _features l
-    pure VT.Layer { VT._version = fromIntegral . getField $ _version l
-                  , VT._name = getField $ _name l
+    (ps,ls,polys) <- features (map (toStrict . decodeUtf8 . utf8) . toList $ Layer.keys l) (toList $ Layer.values l) . toList $ Layer.features l
+    pure VT.Layer { VT._version = fromIntegral $ Layer.version l
+                  , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
                   , VT._points = ps
                   , VT._linestrings = ls
                   , VT._polygons = polys
-                  , VT._extent = maybe 4096 fromIntegral (getField $ _extent l) }
-      where keys = getField $ _keys l
-            vals = getField $ _values l
+                  , VT._extent = maybe 4096 fromIntegral (Layer.extent l) }
 
-  toProtobuf l = RawLayer { _version = putField . fromIntegral $ VT._version l
-                          , _name = putField $ VT._name l
-                          , _features = putField fs
-                          , _keys = putField ks
-                          , _values = putField $ map toProtobuf vs
-                          , _extent = putField . Just . fromIntegral $ VT._extent l }
+  toProtobuf l = Layer.Layer { Layer.version   = fromIntegral $ VT._version l
+                             , Layer.name      = Utf8 . encodeUtf8 . fromStrict $ VT._name l
+                             , Layer.features  = Seq.fromList fs
+                             , Layer.keys      = Seq.fromList $ map (Utf8 . encodeUtf8 . fromStrict) ks
+                             , Layer.values    = Seq.fromList $ map toProtobuf vs
+                             , Layer.extent    = Just . fromIntegral $ VT._extent l
+                             , Layer.ext'field = defaultValue }
+  -- TODO Remove this, it was just for reference during a refactor.
+  -- toProtobuf l = RawLayer { _version = putField . fromIntegral $ VT._version l
+  --                         , _name = putField $ VT._name l
+  --                         , _features = putField fs
+  --                         , _keys = putField ks
+  --                         , _values = putField $ map toProtobuf vs
+  --                         , _extent = putField . Just . fromIntegral $ VT._extent l }
     where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
           (km,vm) = (M.fromList $ zip ks [0..], M.fromList $ zip vs [0..])
-          fs = V.toList $ V.concat [ V.map (unfeature km vm Point) (VT._points l)
-                                   , V.map (unfeature km vm LineString) (VT._linestrings l)
-                                   , V.map (unfeature km vm Polygon) (VT._polygons l) ]
+          fs = V.toList $ V.concat [ V.map (unfeature km vm GeomType.POINT) (VT._points l)
+                                   , V.map (unfeature km vm GeomType.LINESTRING) (VT._linestrings l)
+                                   , V.map (unfeature km vm GeomType.POLYGON) (VT._polygons l) ]
 
 instance Protobuffable VT.Val where
-  fromProtobuf v = mtoe "Value decode: No legal Value type offered" $ fmap VT.St (getField $ _string v)
-    <|> fmap VT.Fl  (getField $ _float v)
-    <|> fmap VT.Do  (getField $ _double v)
-    <|> fmap VT.I64 (getField $ _int64 v)
-    <|> fmap VT.W64 (getField $ _uint64 v)
-    <|> fmap (\(Signed n) -> VT.S64 n) (getField $ _sint v)
-    <|> fmap VT.B   (getField $ _bool v)
+  fromProtobuf v = mtoe "Value decode: No legal Value type offered" $
+        fmap (VT.St . toStrict . decodeUtf8 . utf8) (Value.string_value v)
+    <|> fmap VT.Fl  (Value.float_value v)
+    <|> fmap VT.Do  (Value.double_value v)
+    <|> fmap VT.I64 (Value.int_value v)
+    <|> fmap VT.W64 (Value.uint_value v)
+    <|> fmap VT.S64 (Value.sint_value v)
+    <|> fmap VT.B   (Value.bool_value v)
 
-  toProtobuf (VT.St v)  = def { _string = putField $ Just v }
-  toProtobuf (VT.Fl v)  = def { _float = putField $ Just v }
-  toProtobuf (VT.Do v)  = def { _double = putField $ Just v }
-  toProtobuf (VT.I64 v) = def { _int64 = putField $ Just v }
-  toProtobuf (VT.W64 v) = def { _uint64 = putField $ Just v }
-  toProtobuf (VT.S64 v) = def { _sint = putField . Just $ Signed v }
-  toProtobuf (VT.B v)   = def { _bool = putField $ Just v }
-
--- | A list of `RawLayer`s.
-data RawVectorTile = RawVectorTile { _layers :: Repeated 3 (Message RawLayer) }
-                   deriving (Generic,Show,Eq)
-
-instance Encode RawVectorTile
-instance Decode RawVectorTile
-instance NFData RawVectorTile
-
--- | Contains a pseudo-map of metadata, to be shared across all `RawFeature`s
--- of this `RawLayer`.
-data RawLayer = RawLayer { _version :: Required 15 (Value Word32)
-                         , _name :: Required 1 (Value Text)
-                         , _features :: Repeated 2 (Message RawFeature)
-                         , _keys :: Repeated 3 (Value Text)
-                         , _values :: Repeated 4 (Message RawVal)
-                         , _extent :: Optional 5 (Value Word32)
-                         } deriving (Generic,Show,Eq)
-
-instance Encode RawLayer
-instance Decode RawLayer
-instance NFData RawLayer
-
--- | The /Value/ types of metadata fields.
-data RawVal = RawVal { _string :: Optional 1 (Value Text)
-                     , _float :: Optional 2 (Value Float)
-                     , _double :: Optional 3 (Value Double)
-                     , _int64 :: Optional 4 (Value Int64)
-                     , _uint64 :: Optional 5 (Value Word64)
-                     , _sint :: Optional 6 (Value (Signed Int64))  -- ^ Z-encoded.
-                     , _bool :: Optional 7 (Value Bool)
-                     } deriving (Generic,Show,Eq)
-
-instance Encode RawVal
-instance Decode RawVal
-instance NFData RawVal
-
--- | A set of geometries unified by some theme.
-data RawFeature = RawFeature { _featureId :: Optional 1 (Value Word64)
-                             , _tags :: Packed 2 (Value Word32)
-                             , _geom :: Optional 3 (Enumeration GeomType)
-                             , _geometries :: Packed 4 (Value Word32)
-                             } deriving (Generic,Show,Eq)
-
-instance Encode RawFeature
-instance Decode RawFeature
-instance NFData RawFeature
-
--- | The four potential Geometry types. The spec allows for encoders to set
--- `Unknown` as the type, but our decoder ignores these.
-data GeomType = Unknown | Point | LineString | Polygon
-              deriving (Generic,Enum,Show,Eq)
-
-instance Encode GeomType
-instance Decode GeomType
-instance NFData GeomType
+  toProtobuf (VT.St v)  = defaultValue { Value.string_value = Just . Utf8 . encodeUtf8 $ fromStrict v }
+  toProtobuf (VT.Fl v)  = defaultValue { Value.float_value  = Just v }
+  toProtobuf (VT.Do v)  = defaultValue { Value.double_value = Just v }
+  toProtobuf (VT.I64 v) = defaultValue { Value.int_value    = Just v }
+  toProtobuf (VT.W64 v) = defaultValue { Value.uint_value   = Just v }
+  toProtobuf (VT.S64 v) = defaultValue { Value.sint_value   = Just v }  -- TODO Does this handle the zigzagging correctly?
+  toProtobuf (VT.B v)   = defaultValue { Value.bool_value   = Just v }
 
 -- | Any classical type considered a GIS "geometry". These must be able
 -- to convert between an encodable list of `Command`s.
@@ -332,25 +285,30 @@ uncommands = U.toList . U.concat . map f
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-features :: [Text] -> [RawVal] -> [RawFeature]
+features :: [Text] -> [Value.Value] -> [Feature.Feature]
   -> Either Text (V.Vector (VT.Feature G.Point), V.Vector (VT.Feature G.LineString), V.Vector (VT.Feature G.Polygon))
 features _ _ [] = Left "VectorTile.features: `[RawFeature]` empty"
 features keys vals fs = (,,) <$> ps <*> ls <*> polys
   where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
-        ps = foldrM f V.empty $ filter (\fe -> getField (_geom fe) == Just Point) fs
-        ls = foldrM f V.empty $ filter (\fe -> getField (_geom fe) == Just LineString) fs
-        polys = foldrM f V.empty $ filter (\fe -> getField (_geom fe) == Just Polygon) fs
+        ps = foldrM f V.empty $ filter (\fe -> Feature.type' fe == Just GeomType.POINT) fs
+        ls = foldrM f V.empty $ filter (\fe -> Feature.type' fe == Just GeomType.LINESTRING) fs
+        polys = foldrM f V.empty $ filter (\fe -> Feature.type' fe == Just GeomType.POLYGON) fs
 
-        f :: ProtobufGeom g => RawFeature -> V.Vector (VT.Feature g) -> Either Text (V.Vector (VT.Feature g))
+        f :: ProtobufGeom g => Feature.Feature -> V.Vector (VT.Feature g) -> Either Text (V.Vector (VT.Feature g))
         f x acc = do
-          geos <- commands (getField $ _geometries x) >>= fromCommands
-          meta <- getMeta keys vals . getField $ _tags x
-          pure $ VT.Feature { VT._featureId = maybe 0 fromIntegral . getField $ _featureId x
-                            , VT._metadata = meta
-                            , VT._geometries = geos
-                            } `V.cons` acc
+          geos <- commands (toList $ Feature.geometry x) >>= fromCommands
+          meta <- getMeta keys vals . toList $ Feature.tags x
+          pure $ VT.Feature { VT._featureId  = maybe 0 fromIntegral $ Feature.id x
+                            , VT._metadata   = meta
+                            , VT._geometries = geos } `V.cons` acc
 
-getMeta :: [Text] -> [RawVal] -> [Word32] -> Either Text (M.Map Text VT.Val)
+-- TODO Rework `features`. Consing onto the head of a Vector is probably slow as ass.
+-- Actually I should benchmark that. For now, let's get this monster compiling.
+
+-- TODO What is this List indexing garbage!? If `keys` and `vals` were left as `Seq`,
+-- those lookups would be much faster. See:
+-- https://downloads.haskell.org/~ghc/latest/docs/html/libraries/containers-0.5.10.2/Data-Sequence.html#v:index
+getMeta :: [Text] -> [Value.Value] -> [Word32] -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> fromProtobuf (vals !! v)) M.empty kv
@@ -365,26 +323,16 @@ totalMeta ps ls polys = (keys, vals)
         g = V.foldr (\feat acc -> M.elems (VT._metadata feat) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeature :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType -> VT.Feature g -> RawFeature
-unfeature keys vals gt fe = RawFeature
-                            { _featureId = putField . Just . fromIntegral $ VT._featureId fe
-                            , _tags = putField $ tags fe
-                            , _geom = putField $ Just gt
-                            , _geometries = putField . uncommands . toCommands $ VT._geometries fe }
+unfeature :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
+unfeature keys vals gt fe = Feature.Feature
+                            { Feature.id       = Just . fromIntegral $ VT._featureId fe
+                            , Feature.tags     = Seq.fromList $ tags fe
+                            , Feature.type'    = Just gt
+                            , Feature.geometry = Seq.fromList . uncommands . toCommands $ VT._geometries fe }
   where tags = unpairs . map f . M.toList . VT._metadata
         f (k,v) = both (fromIntegral . fromJust) (M.lookup k keys, M.lookup v vals)
 
 {- UTIL -}
-
--- | A `RawVal` with every entry set to `Nothing`.
-def :: RawVal
-def = RawVal { _string = putField Nothing
-             , _float  = putField Nothing
-             , _double = putField Nothing
-             , _int64  = putField Nothing
-             , _uint64 = putField Nothing
-             , _sint   = putField Nothing
-             , _bool   = putField Nothing }
 
 -- | Transform a `V.Vector` of `Point`s into one of Z-encoded Parameter ints.
 params :: U.Vector (Int,Int) -> U.Vector Word32
