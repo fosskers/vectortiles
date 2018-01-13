@@ -56,13 +56,14 @@ module Geography.VectorTile
 
 import           Data.Text (Text)
 import qualified Geography.VectorTile.Protobuf.Internal as PB
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
 import           Geography.VectorTile.Protobuf (decode, encode)
 import           Geography.VectorTile.VectorTile
 
 ---
 
-tile :: PB.RawVectorTile -> Either Text VectorTile
+tile :: Tile.Tile -> Either Text VectorTile
 tile = PB.fromProtobuf
 
-untile :: VectorTile -> PB.RawVectorTile
+untile :: VectorTile -> Tile.Tile
 untile = PB.toProtobuf
