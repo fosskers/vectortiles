@@ -52,24 +52,24 @@ import           Data.Foldable (foldrM, foldlM, toList)
 import           Data.Int
 import           Data.List (nub)
 import qualified Data.Map.Strict as M
-import qualified Data.Sequence as Seq
 import           Data.Maybe (fromJust)
 import           Data.Monoid
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import           Data.Text (Text, pack)
-import           Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
 import           Data.Text.Lazy (toStrict, fromStrict)
+import           Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import qualified Geography.VectorTile.Geometry as G
-import           Geography.VectorTile.Util
-import qualified Geography.VectorTile.VectorTile as VT
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Feature as Feature
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.GeomType as GeomType
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Layer as Layer
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Value as Value
+import           Geography.VectorTile.Util
+import qualified Geography.VectorTile.VectorTile as VT
 import           Text.Printf
 import           Text.ProtocolBuffers.Basic (defaultValue, Utf8(..), utf8)
 
