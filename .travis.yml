@@ -1,3 +1,5 @@
+sudo: true
+
 language: nix
 
 before_install: nix-env --install --attr nixpkgs.haskellPackages.hpack
