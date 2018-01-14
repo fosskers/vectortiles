@@ -8,8 +8,3 @@ before_install: nix-env --install --attr nixpkgs.haskellPackages.hpack
 script:
   - hpack
   - nix-build --attr vectortiles release.nix
-
-# Extraneous comment!
-cache:
-  directories:
-    - /nix/store
