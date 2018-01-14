@@ -9,6 +9,7 @@ script:
   - hpack
   - nix-build --attr vectortiles release.nix
 
+# Extraneous comment!
 cache:
   directories:
     - /nix/store
