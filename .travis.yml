@@ -1,3 +1,4 @@
+# Run the build without Docker. It's *much* faster this way.
 sudo: true
 
 language: nix
@@ -7,3 +8,7 @@ before_install: nix-env --install --attr nixpkgs.haskellPackages.hpack
 script:
   - hpack
   - nix-build --attr vectortiles release.nix
+
+cache:
+  directories:
+    - /nix/store
