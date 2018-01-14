@@ -82,6 +82,7 @@ benchmarks:
     source-dirs: bench
     ghc-options:
       - -threaded
+      - -O2
     dependencies:
       - criterion >=1.1 && <1.4
       - microlens >=0.4 && <0.5

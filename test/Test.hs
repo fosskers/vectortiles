@@ -1,3 +1,5 @@
+-- -*- dante-target: "vectortiles-test"; -*-
+
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
