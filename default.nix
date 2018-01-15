@@ -5,7 +5,7 @@
 }:
 mkDerivation {
   pname = "vectortiles";
-  version = "1.2.0.7";
+  version = "1.3.0";
   src = ./.;
   libraryHaskellDepends = [
     base bytestring cereal containers deepseq protocol-buffers
