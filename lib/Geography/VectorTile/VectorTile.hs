@@ -60,16 +60,16 @@ instance NFData VectorTile
 -- | A layer, which could contain any number of `Feature`s of any `Geometry` type.
 -- This codec only respects the canonical three `Geometry` types, and we split
 -- them here explicitely to allow for more fine-grained access to each type.
-data Layer = Layer { _version :: Int  -- ^ The version of the spec we follow. Should always be 2.
+data Layer = Layer { _version :: Word  -- ^ The version of the spec we follow. Should always be 2.
                    , _name :: Text
                    , _points :: V.Vector (Feature Point)
                    , _linestrings :: V.Vector (Feature LineString)
                    , _polygons :: V.Vector (Feature Polygon)
-                   , _extent :: Int  -- ^ Default: 4096
+                   , _extent :: Word  -- ^ Default: 4096
                    } deriving (Eq,Show,Generic)
 
 -- | > Lens' Layer Int
-version :: Functor f => (Int -> f Int) -> Layer -> f Layer
+version :: Functor f => (Word -> f Word) -> Layer -> f Layer
 version f l = (\v -> l { _version = v }) <$> f (_version l)
 {-# INLINE version #-}
 
@@ -94,7 +94,7 @@ polygons f l = (\v -> l { _polygons = v }) <$> f (_polygons l)
 {-# INLINE polygons #-}
 
 -- | > Lens' Layer Int
-extent :: Functor f => (Int -> f Int) -> Layer -> f Layer
+extent :: Functor f => (Word -> f Word) -> Layer -> f Layer
 extent f l = (\v -> l { _extent = v }) <$> f (_extent l)
 {-# INLINE extent #-}
 
@@ -113,12 +113,12 @@ instance NFData Layer
 --
 -- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
 -- the same thing, as a `V.Vector` of that `Geometry`.
-data Feature g = Feature { _featureId :: Int  -- ^ Default: 0
+data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
                          , _metadata :: M.Map Text Val
                          , _geometries :: V.Vector g } deriving (Eq,Show,Generic)
 
 -- | > Lens' (Feature g) Int
-featureId :: Functor f => (Int -> f Int) -> Feature g -> f (Feature g)
+featureId :: Functor f => (Word -> f Word) -> Feature g -> f (Feature g)
 featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
 {-# INLINE featureId #-}
 

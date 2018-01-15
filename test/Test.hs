@@ -1,3 +1,5 @@
+-- -*- dante-target: "vectortiles-test"; -*-
+
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
@@ -6,15 +8,20 @@ module Main where
 
 import qualified Data.ByteString as BS
 import           Data.Hex
-import           Data.ProtocolBuffers hiding (decode)
-import           Data.Serialize.Get
-import           Data.Serialize.Put
-import qualified Geography.VectorTile.Protobuf.Internal as R
-import           Test.Tasty
-import           Test.Tasty.HUnit
+import qualified Data.Sequence as Seq
+import           Data.Text (Text, unpack)
+import qualified Data.Vector.Unboxed as U
 import           Geography.VectorTile
 import           Geography.VectorTile.Geometry
-import qualified Data.Vector.Unboxed as U
+import qualified Geography.VectorTile.Protobuf.Internal as R
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Feature as Feature
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.GeomType as GeomType
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Layer as Layer
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Value as Value
+import           Test.Tasty
+import           Test.Tasty.HUnit
+import           Text.ProtocolBuffers.Basic (Utf8(..), defaultValue)
 
 ---
 
@@ -54,10 +61,10 @@ suite op ls pl rd cl = testGroup "Unit Tests"
       ]
     , testGroup "Serialization Isomorphism"
       [ --testCase "onepoint.mvt <-> Raw.Tile" $ fromRaw op
---      , testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
+        -- testCase "linestring.mvt <-> Raw.Tile" $ fromRaw ls
 --      , testCase "polygon.mvt <-> Raw.Tile" $ fromRaw pl
       --    , testCase "roads.mvt <-> Raw.Tile" $ fromRaw rd
-      testCase "testTile <-> protobuf bytes" testTileIso
+        testCase "testTile <-> protobuf bytes" testTileIso
       ]
     ]
   , testGroup "Geometries"
@@ -73,49 +80,40 @@ suite op ls pl rd cl = testGroup "Unit Tests"
   ]
 
 testOnePoint :: BS.ByteString -> Assertion
-testOnePoint vt = case decodeIt vt of
-                    Left e -> assertFailure e
+testOnePoint vt = case decode vt of
+                    Left e -> assertFailure $ unpack e
                     Right t -> t @?= onePoint
 
 testLineString :: BS.ByteString -> Assertion
-testLineString vt = case decodeIt vt of
-                      Left e -> assertFailure e
+testLineString vt = case decode vt of
+                      Left e -> assertFailure $ unpack e
                       Right t -> t @?= oneLineString
 
 testPolygon :: BS.ByteString -> Assertion
-testPolygon vt = case decodeIt vt of
-                   Left e -> assertFailure e
+testPolygon vt = case decode vt of
+                   Left e -> assertFailure $ unpack e
                    Right t -> t @?= onePolygon
 
 -- | For testing is decoding succeeded in generally. Makes no guarantee
 -- about the quality of the content, only that the parse succeeded.
 testDecode :: BS.ByteString -> Assertion
-testDecode = assert . isRight . decodeIt
+testDecode = assert . isRight . decode
 
 tileDecode :: BS.ByteString -> Assertion
-tileDecode bs = case decodeIt bs of
-  Left e -> assertFailure e
+tileDecode bs = case decode bs of
+  Left e -> assertFailure $ unpack e
   Right t -> assert . isRight $ R.fromProtobuf t
 
 fromRaw :: BS.ByteString -> Assertion
-fromRaw vt = case decodeIt vt of
-               Left e -> assertFailure e
-               Right l -> hex (encodeIt l) @?= hex vt
---               Right l -> if runPut (encodeMessage l) == vt
---                          then assert True
---                          else assertString "Isomorphism failed."
+fromRaw vt = case decode vt of
+               Left e  -> assertFailure $ unpack e
+               -- Right l -> encode l @?= vt
+               Right l -> hex (encode l) @?= hex vt
 
 testTileIso :: Assertion
-testTileIso = case decodeIt pb of
+testTileIso = case decode $ encode testTile of
                  Right tl -> assertEqual "" tl testTile
-                 Left e -> assertFailure e
-  where pb = encodeIt testTile
-
-decodeIt :: BS.ByteString -> Either String R.RawVectorTile
-decodeIt = runGet decodeMessage
-
-encodeIt :: R.RawVectorTile -> BS.ByteString
-encodeIt = runPut . encodeMessage
+                 Left e -> assertFailure $ unpack e
 
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -125,84 +123,73 @@ fromRight :: Either a b -> b
 fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
 
-rawTest :: IO (Either String R.RawVectorTile)
-rawTest = decodeIt <$> BS.readFile "onepoint.mvt"
+rawTest :: IO (Either Text Tile.Tile)
+rawTest = decode <$> BS.readFile "onepoint.mvt"
 
-encodeIso :: R.RawVectorTile -> Assertion
+encodeIso :: Tile.Tile -> Assertion
 encodeIso vt = assert . isRight . fmap R.toProtobuf $ R.fromProtobuf vt
 
-testTile :: R.RawVectorTile
-testTile = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R._version = putField 2
-                       , R._name = putField "testlayer"
-                       , R._features = putField [f]
-                       , R._keys = putField ["somekey"]
-                       , R._values = putField [v]
-                       , R._extent = putField $ Just 4096
-                       }
-        f = R.RawFeature { R._featureId = putField $ Just 0
-                         , R._tags = putField [0,0]
-                         , R._geom = putField $ Just R.Point
-                         , R._geometries = putField [9, 50, 34]  -- MoveTo(+25,+17)
-                         }
-        v = R.RawVal { R._string = putField $ Just "Some Value"
-                     , R._float = putField Nothing
-                     , R._double = putField Nothing
-                     , R._int64 = putField Nothing
-                     , R._uint64 = putField Nothing
-                     , R._sint = putField Nothing
-                     , R._bool = putField Nothing
-                     }
+testTile :: Tile.Tile
+testTile = Tile.Tile (Seq.singleton l) defaultValue
+  where l = Layer.Layer { Layer.version   = 2
+                        , Layer.name      = Utf8 "testlayer"
+                        , Layer.features  = Seq.singleton f
+                        , Layer.keys      = Seq.singleton $ Utf8 "somekey"
+                        , Layer.values    = Seq.singleton v
+                        , Layer.extent    = Just 4096
+                        , Layer.ext'field = defaultValue }
+        f = Feature.Feature { Feature.id    = Just 0
+                            , Feature.tags  = Seq.fromList [0,0]
+                            , Feature.type' = Just GeomType.POINT
+                            , Feature.geometry = Seq.fromList [9, 50, 34] }  -- MoveTo(+25,+17)
+        v = defaultValue { Value.string_value = Just $ Utf8 "Some Value" }
 
 -- | Correct decoding of `onepoint.mvt`
-onePoint :: R.RawVectorTile
-onePoint = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R._version = putField 1
-                       , R._name = putField "OnePoint"
-                       , R._features = putField [f]
-                       , R._keys = putField []
-                       , R._values = putField []
-                       , R._extent = putField $ Just 4096
-                       }
-        f = R.RawFeature { R._featureId = putField Nothing
-                         , R._tags = putField []
-                         , R._geom = putField $ Just R.Point
-                         , R._geometries = putField [9, 10, 10]  -- MoveTo(+5,+5)
-                         }
+onePoint :: Tile.Tile
+onePoint = Tile.Tile (Seq.singleton l) defaultValue
+  where l = Layer.Layer { Layer.version   = 1
+                        , Layer.name      = Utf8 "OnePoint"
+                        , Layer.features  = Seq.singleton f
+                        , Layer.keys      = Seq.Empty
+                        , Layer.values    = Seq.Empty
+                        , Layer.extent    = Just 4096
+                        , Layer.ext'field = defaultValue }
+        f = Feature.Feature { Feature.id    = Just 0
+                            , Feature.tags  = Seq.Empty
+                            , Feature.type' = Just GeomType.POINT
+                            , Feature.geometry = Seq.fromList [9, 10, 10] }  -- MoveTo(+5,+5)
 
 -- | Correct decoding of `linestring.mvt`
-oneLineString :: R.RawVectorTile
-oneLineString = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R._version = putField 1
-                       , R._name = putField "OneLineString"
-                       , R._features = putField [f]
-                       , R._keys = putField []
-                       , R._values = putField []
-                       , R._extent = putField $ Just 4096
-                       }
-        f = R.RawFeature { R._featureId = putField Nothing
-                         , R._tags = putField []
-                         , R._geom = putField $ Just R.LineString
-                         -- MoveTo(+5,+5), LineTo(+1195,+1195)
-                         , R._geometries = putField [9, 10, 10, 10, 2390, 2390]
-                         }
+oneLineString :: Tile.Tile
+oneLineString = Tile.Tile (Seq.singleton l) defaultValue
+  where l = Layer.Layer { Layer.version   = 1
+                        , Layer.name      = Utf8 "OneLineString"
+                        , Layer.features  = Seq.singleton f
+                        , Layer.keys      = Seq.Empty
+                        , Layer.values    = Seq.Empty
+                        , Layer.extent    = Just 4096
+                        , Layer.ext'field = defaultValue }
+        f = Feature.Feature { Feature.id    = Just 0
+                            , Feature.tags  = Seq.Empty
+                            , Feature.type' = Just GeomType.LINESTRING
+                            -- MoveTo(+5,+5), LineTo(+1195,+1195)
+                            , Feature.geometry = Seq.fromList [9, 10, 10, 10, 2390, 2390] }
 
 -- | Correct decoding of `polygon.mvt`
-onePolygon :: R.RawVectorTile
-onePolygon = R.RawVectorTile $ putField [l]
-  where l = R.RawLayer { R._version = putField 1
-                       , R._name = putField "OnePolygon"
-                       , R._features = putField [f]
-                       , R._keys = putField []
-                       , R._values = putField []
-                       , R._extent = putField $ Just 4096
-                       }
-        f = R.RawFeature { R._featureId = putField Nothing
-                         , R._tags = putField []
-                         , R._geom = putField $ Just R.Polygon
-                         -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
-                         , R._geometries = putField [9, 4, 4, 18, 6, 4, 5, 4, 15]
-                         }
+onePolygon :: Tile.Tile
+onePolygon = Tile.Tile (Seq.singleton l) defaultValue
+  where l = Layer.Layer { Layer.version   = 1
+                        , Layer.name      = Utf8 "OnePolygon"
+                        , Layer.features  = Seq.singleton f
+                        , Layer.keys      = Seq.Empty
+                        , Layer.values    = Seq.Empty
+                        , Layer.extent    = Just 4096
+                        , Layer.ext'field = defaultValue }
+        f = Feature.Feature { Feature.id    = Just 0
+                            , Feature.tags  = Seq.Empty
+                            , Feature.type' = Just GeomType.POLYGON
+                            -- MoveTo(+2,+2), LineTo(+3,+2), LineTo(-3,+2), ClosePath
+                            , Feature.geometry = Seq.fromList [9, 4, 4, 18, 6, 4, 5, 4, 15] }
 
 zencoding :: Assertion
 zencoding = assert $ map (R.unzig . R.zig) vs @?= vs

@@ -30,30 +30,30 @@ module Geography.VectorTile.Protobuf
   ) where
 
 import qualified Data.ByteString as BS
-import           Data.ProtocolBuffers hiding (decode, encode)
-import           Data.Serialize.Get
-import           Data.Serialize.Put
+import qualified Data.ByteString.Lazy as BL
 import           Data.Text (Text, pack)
 import           Geography.VectorTile.Protobuf.Internal
+import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
+import           Text.ProtocolBuffers.WireMessage (messageGet, messagePut)
 
 ---
 
 -- | Attempt to decode a `BS.ByteString` of raw protobuf data into a mid-level
 -- representation of a `RawVectorTile`.
-decode :: BS.ByteString -> Either Text RawVectorTile
-decode bs = case runGet decodeMessage bs of
+decode :: BS.ByteString -> Either Text Tile.Tile
+decode bs = case messageGet $ BL.fromStrict bs of
   Left e -> Left $ pack e
-  Right vt -> Right vt
+  Right (vt, _) -> Right vt
 
 -- | Encode a mid-level representation of a `RawVectorTile` into raw protobuf data.
-encode :: RawVectorTile -> BS.ByteString
-encode = runPut . encodeMessage
+encode :: Tile.Tile -> BS.ByteString
+encode = BL.toStrict . messagePut
 
 -- | Given a filename, attempt to decode bytes read from that file.
-decodeIO :: FilePath -> IO (Either Text RawVectorTile)
+decodeIO :: FilePath -> IO (Either Text Tile.Tile)
 decodeIO = fmap decode . BS.readFile
 
 -- | Write a mid-level representation of a `RawVectorTile` to a file as raw
 -- protobuf data.
-encodeIO :: RawVectorTile -> FilePath -> IO ()
+encodeIO :: Tile.Tile -> FilePath -> IO ()
 encodeIO vt fp = BS.writeFile fp $ encode vt
