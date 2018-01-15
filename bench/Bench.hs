@@ -10,7 +10,6 @@ import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as M
 import           Data.Text (Text)
 import           Geography.VectorTile
-import           Geography.VectorTile.Geometry (Polygon)
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
 
@@ -22,10 +21,10 @@ main = do
   ls <- BS.readFile "test/linestring.mvt"
   pl <- BS.readFile "test/polygon.mvt"
   rd <- BS.readFile "test/roads.mvt"
-  let op' = fromRight $ decode op >>= tile
-      ls' = fromRight $ decode ls >>= tile
-      pl' = fromRight $ decode pl >>= tile
-      rd' = fromRight $ decode rd >>= tile
+  let op' = fromRight $ tile op
+      ls' = fromRight $ tile ls
+      pl' = fromRight $ tile pl
+      rd' = fromRight $ tile rd
   defaultMain [ bgroup "Decoding"
                 [ bgroup "onepoint.mvt" $ decodes op
                 , bgroup "linestring.mvt" $ decodes ls
@@ -52,21 +51,17 @@ main = do
                 ]
               ]
 
--- bench "Raw.VectorTile" $ nf decode bs
 decodes :: BS.ByteString -> [Benchmark]
-decodes bs = [ bench "VectorTile" $ nf (decode >=> tile) bs ]
+decodes bs = [ bench "VectorTile" $ nf tile bs ]
 
--- bench "Raw.VectorTile" $ nf untile vt
 encodes :: VectorTile -> [Benchmark]
-encodes vt = [ bench "ByteString" $ nf (encode . untile) vt ]
+encodes vt = [ bench "ByteString" $ nf untile vt ]
 
 layerNames :: BS.ByteString -> [Text]
-layerNames mvt = M.keys $ _layers t
-  where t = fromRight $ decode mvt >>= tile
+layerNames = M.keys . _layers . fromRight . tile
 
 firstPoly :: Text -> BS.ByteString -> Maybe Polygon
-firstPoly ln mvt = r ^? _Right . layers . ix ln . polygons . _head . geometries . _head
-  where r = decode mvt >>= tile
+firstPoly ln mvt = tile mvt ^? _Right . layers . ix ln . polygons . _head . geometries . _head
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b
