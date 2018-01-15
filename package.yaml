@@ -46,7 +46,9 @@ dependencies:
 
 library:
   source-dirs: lib
-  exposed-modules: Geography.VectorTile
+  exposed-modules:
+    - Geography.VectorTile
+    - Geography.VectorTile.Internal
   dependencies:
     - deepseq >=1.4 && <1.5
     - transformers >=0.5 && <0.6

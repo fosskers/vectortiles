@@ -60,7 +60,7 @@ import           Data.Bifunctor (bimap)
 import qualified Data.ByteString as BS
 import           Data.ByteString.Lazy (fromStrict, toStrict)
 import           Data.Text (Text, pack)
-import           Geography.VectorTile.Protobuf.Internal (fromProtobuf, toProtobuf)
+import           Geography.VectorTile.Internal (fromProtobuf, toProtobuf)
 import           Geography.VectorTile.VectorTile
 import           Geography.VectorTile.Geometry
 import           Text.ProtocolBuffers.WireMessage (messageGet, messagePut)
