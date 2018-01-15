@@ -150,7 +150,7 @@ class ProtobufGeom g where
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  fromCommands [MoveTo ps] = Right . U.convert $ expand' (0, 0) ps
+  fromCommands [MoveTo ps] = Right . U.convert $ expand (0, 0) ps
   fromCommands (c:_) = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands [] = Left "No points given!"
 
@@ -165,7 +165,7 @@ instance ProtobufGeom G.LineString where
   fromCommands cs = evalState (f cs) (0,0)
     where f (MoveTo p : LineTo ps : rs) = do
             curr <- get
-            let ls = G.LineString $ expand' curr (p <> ps)
+            let ls = G.LineString $ expand curr (p <> ps)
             put . U.last $ G.lsPoints ls
             fmap (V.cons ls) <$> f rs
           f [] = pure $ Right V.empty
@@ -192,10 +192,9 @@ instance ProtobufGeom G.Polygon where
     pure $ V.snoc ps' p'  -- Include the last Exterior Ring worked on.
     where f (MoveTo p : LineTo ps : ClosePath : rs) = do
             curr <- get
-            let h = U.head p
-                here = (G.x h + G.x curr, G.y h + G.y curr)
-            po <- flip U.snoc here <$> U.mapM expand (U.cons h ps)
-            fmap (V.cons (G.Polygon po V.empty)) <$> f rs
+            let ps' = expand curr (U.cons (U.head p) ps)
+            put $ U.last ps'
+            fmap (V.cons (G.Polygon (U.snoc ps' $ U.head ps') V.empty)) <$> f rs
           f [] = pure $ Right V.empty
           f _  = pure . Left . pack $ printf "Polygon decode: Invalid command sequence given: %s" (show cs)
           g acc p | G.area p > 0 = do  -- New external rings.
@@ -338,19 +337,9 @@ unfeats keys vals gt fe = Feature.Feature
 params :: U.Vector (Int,Int) -> U.Vector Word32
 params = U.foldr (\(a,b) acc -> U.cons (zig a) $ U.cons (zig b) acc) U.empty
 
--- | Expand a pair of diffs from some reference point into that
--- of a `Point` value. The reference point is moved to our new `Point`.
-expand :: (Int,Int) -> State (Int,Int) G.Point
-expand p = do
-  curr <- get
-  let here = (G.x p + G.x curr, G.y p + G.y curr)
-  put here
-  pure here
-
--- | Expand a pair of diffs from some reference point into that
--- of a `Point` value. The reference point is moved to our new `Point`.
-expand' :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
-expand' = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
+-- | Expand a pair of diffs from some reference point into that of a `Point` value.
+expand :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
+expand = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
 -- the previous point in the sequence. The reference point is moved

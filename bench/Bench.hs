@@ -4,7 +4,6 @@
 
 module Main where
 
-import           Control.Monad ((>=>))
 import           Criterion.Main
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as M
