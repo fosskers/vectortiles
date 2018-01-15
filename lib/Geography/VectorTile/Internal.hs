@@ -102,7 +102,7 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- feats (map (toStrict . decodeUtf8 . utf8) . toList $ Layer.keys l) (toList $ Layer.values l) . toList $ Layer.features l
+    (ps,ls,polys) <- feats (fmap (toStrict . decodeUtf8 . utf8) $ Layer.keys l) (Layer.values l) . toList $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
                   , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
                   , VT._points = ps
@@ -284,7 +284,7 @@ uncommands = U.toList . U.concat . map f
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-feats :: [Text] -> [Value.Value] -> [Feature.Feature]
+feats :: Seq.Seq Text -> Seq.Seq Value.Value -> [Feature.Feature]
   -> Either Text (V.Vector (VT.Feature G.Point), V.Vector (VT.Feature G.LineString), V.Vector (VT.Feature G.Polygon))
 feats _ _ [] = Left "VectorTile.features: `[RawFeature]` empty"
 feats keys vals fs = (,,) <$> ps <*> ls <*> polys
@@ -301,16 +301,10 @@ feats keys vals fs = (,,) <$> ps <*> ls <*> polys
                             , VT._metadata   = meta
                             , VT._geometries = geos } `V.cons` acc
 
--- TODO Rework `features`. Consing onto the head of a Vector is probably slow as ass.
--- Actually I should benchmark that. For now, let's get this monster compiling.
-
--- TODO What is this List indexing garbage!? If `keys` and `vals` were left as `Seq`,
--- those lookups would be much faster. See:
--- https://downloads.haskell.org/~ghc/latest/docs/html/libraries/containers-0.5.10.2/Data-Sequence.html#v:index
-getMeta :: [Text] -> [Value.Value] -> [Word32] -> Either Text (M.Map Text VT.Val)
+getMeta :: Seq.Seq Text -> Seq.Seq Value.Value -> [Word32] -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
   kv <- map (both fromIntegral) <$> pairs tags
-  foldrM (\(k,v) acc -> (\v' -> M.insert (keys !! k) v' acc) <$> fromProtobuf (vals !! v)) M.empty kv
+  foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
 
