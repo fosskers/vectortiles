@@ -150,7 +150,7 @@ class ProtobufGeom g where
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  fromCommands [MoveTo ps] = Right . U.convert $ evalState (U.mapM expand ps) (0,0)
+  fromCommands [MoveTo ps] = Right . U.convert $ expand' (0, 0) ps
   fromCommands (c:_) = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands [] = Left "No points given!"
 
@@ -163,8 +163,11 @@ instance ProtobufGeom G.Point where
 -- a count greater than 0.
 instance ProtobufGeom G.LineString where
   fromCommands cs = evalState (f cs) (0,0)
-    where f (MoveTo p : LineTo ps : rs) = fmap . V.cons <$> ls <*> f rs
-            where ls = G.LineString <$> U.mapM expand (p <> ps)
+    where f (MoveTo p : LineTo ps : rs) = do
+            curr <- get
+            let ls = G.LineString $ expand' curr (p <> ps)
+            put . U.last $ G.lsPoints ls
+            fmap (V.cons ls) <$> f rs
           f [] = pure $ Right V.empty
           f _  = pure $ Left "LineString decode: Invalid command sequence given."
 
@@ -343,6 +346,11 @@ expand p = do
   let here = (G.x p + G.x curr, G.y p + G.y curr)
   put here
   pure here
+
+-- | Expand a pair of diffs from some reference point into that
+-- of a `Point` value. The reference point is moved to our new `Point`.
+expand' :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
+expand' = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
 -- the previous point in the sequence. The reference point is moved

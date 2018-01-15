@@ -9,6 +9,7 @@ module Main where
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Sequence as Seq
+import qualified Data.Text as T
 import qualified Data.Vector.Unboxed as U
 import           Geography.VectorTile
 import qualified Geography.VectorTile.Internal as I
@@ -87,16 +88,18 @@ fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
 
 encodeIso :: I.Tile -> Assertion
-encodeIso vt = assert . isRight . fmap I.toProtobuf $ I.fromProtobuf vt
+encodeIso vt = case I.fromProtobuf vt of
+                 Left e  -> assertFailure $ T.unpack e
+                 Right t -> I.toProtobuf t @?= vt
 
 testTile :: I.Tile
 testTile = I.Tile (Seq.singleton l) defaultValue
-  where l = defaultValue { I.version   = 2
-                         , I.name      = Utf8 "testlayer"
-                         , I.features  = Seq.singleton f
-                         , I.keys      = Seq.singleton $ Utf8 "somekey"
-                         , I.values    = Seq.singleton v
-                         , I.extent    = Just 4096 }
+  where l = defaultValue { I.version  = 2
+                         , I.name     = Utf8 "testlayer"
+                         , I.features = Seq.singleton f
+                         , I.keys     = Seq.singleton $ Utf8 "somekey"
+                         , I.values   = Seq.singleton v
+                         , I.extent   = Just 4096 }
         f = I.Feature { I.id    = Just 0
                       , I.tags  = Seq.fromList [0,0]
                       , I.type' = Just I.POINT
