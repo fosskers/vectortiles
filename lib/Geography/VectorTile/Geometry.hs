@@ -45,14 +45,9 @@ data Polygon = Polygon { polyPoints :: U.Vector Point
 
 instance NFData Polygon
 
-{-
--- | Very performant for the same reason as `LineString`.
-newtype Polygon = Polygon { points :: U.Vector Point } deriving (Eq,Show)
--}
-
 -- | The area of a `Polygon` is the difference between the areas of its
 -- outer ring and inner rings.
-area :: Polygon -> Float
+area :: Polygon -> Double
 area p = surveyor (polyPoints p) + sum (V.map area $ inner p)
 
 -- | The surveyor's formula for calculating the area of a `Polygon`.
@@ -60,7 +55,7 @@ area p = surveyor (polyPoints p) + sum (V.map area $ inner p)
 -- considered an Interior Ring.
 --
 -- Assumption: The `U.Vector` given has at least 4 `Point`s.
-surveyor :: U.Vector Point -> Float
+surveyor :: U.Vector Point -> Double
 surveyor v = (/ 2) . fromIntegral . U.sum $ U.zipWith3 (\xn yn yp -> xn * (yn - yp)) xs yns yps
   where v' = U.init v
         xs = U.map x v'
@@ -68,7 +63,7 @@ surveyor v = (/ 2) . fromIntegral . U.sum $ U.zipWith3 (\xn yn yp -> xn * (yn - 
         yps = U.map y . U.init $ U.cons (U.last v') v'
 
 -- | Euclidean distance.
-distance :: Point -> Point -> Float
+distance :: Point -> Point -> Double
 distance p1 p2 = sqrt . fromIntegral $ dx ^ 2 + dy ^ 2
   where dx = x p1 - x p2
         dy = y p1 - y p2

@@ -117,13 +117,6 @@ instance Protobuffable VT.Layer where
                              , Layer.values    = Seq.fromList $ map toProtobuf vs
                              , Layer.extent    = Just . fromIntegral $ VT._extent l
                              , Layer.ext'field = defaultValue }
-  -- TODO Remove this, it was just for reference during a refactor.
-  -- toProtobuf l = RawLayer { _version = putField . fromIntegral $ VT._version l
-  --                         , _name = putField $ VT._name l
-  --                         , _features = putField fs
-  --                         , _keys = putField ks
-  --                         , _values = putField $ map toProtobuf vs
-  --                         , _extent = putField . Just . fromIntegral $ VT._extent l }
     where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
           (km,vm) = (M.fromList $ zip ks [0..], M.fromList $ zip vs [0..])
           fs = V.toList $ V.concat [ V.map (unfeats km vm GeomType.POINT) (VT._points l)
@@ -145,7 +138,7 @@ instance Protobuffable VT.Val where
   toProtobuf (VT.Do v)  = defaultValue { Value.double_value = Just v }
   toProtobuf (VT.I64 v) = defaultValue { Value.int_value    = Just v }
   toProtobuf (VT.W64 v) = defaultValue { Value.uint_value   = Just v }
-  toProtobuf (VT.S64 v) = defaultValue { Value.sint_value   = Just v }  -- TODO Does this handle the zigzagging correctly?
+  toProtobuf (VT.S64 v) = defaultValue { Value.sint_value   = Just v }
   toProtobuf (VT.B v)   = defaultValue { Value.bool_value   = Just v }
 
 -- | Any classical type considered a GIS "geometry". These must be able
