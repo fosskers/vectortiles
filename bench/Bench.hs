@@ -1,3 +1,5 @@
+-- -*- dante-target: "vectortiles-bench"; -*-
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -50,15 +52,13 @@ main = do
                 ]
               ]
 
+-- bench "Raw.VectorTile" $ nf decode bs
 decodes :: BS.ByteString -> [Benchmark]
-decodes bs = [ bench "Raw.VectorTile" $ nf decode bs
-             , bench "VectorTile" $ nf (decode >=> tile) bs
-             ]
+decodes bs = [ bench "VectorTile" $ nf (decode >=> tile) bs ]
 
+-- bench "Raw.VectorTile" $ nf untile vt
 encodes :: VectorTile -> [Benchmark]
-encodes vt = [ bench "Raw.VectorTile" $ nf untile vt
-             , bench "ByteString" $ nf (encode . untile) vt
-             ]
+encodes vt = [ bench "ByteString" $ nf (encode . untile) vt ]
 
 layerNames :: BS.ByteString -> [Text]
 layerNames mvt = M.keys $ _layers t
