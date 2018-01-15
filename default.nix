@@ -22,5 +22,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/fosskers/vectortiles";
   description = "GIS Vector Tiles, as defined by Mapbox";
-  license = stdenv.lib.licenses.asl20;
+  license = stdenv.lib.licenses.bsd3;
 }

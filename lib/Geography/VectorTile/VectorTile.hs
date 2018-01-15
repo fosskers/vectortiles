@@ -4,9 +4,9 @@
 
 -- |
 -- Module    : Geography.VectorTile.VectorTile
--- Copyright : (c) Azavea, 2016 - 2017
--- License   : Apache 2
--- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
+-- Copyright : (c) Colin Woodbury 2016 - 2018
+-- License   : BSD3
+-- Maintainer: Colin Woodbury <colingw@gmail.com>
 --
 -- High-level types for representing Vector Tiles.
 

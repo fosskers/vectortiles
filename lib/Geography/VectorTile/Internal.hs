@@ -10,7 +10,7 @@
 -- |
 -- Module    : Geography.VectorTile.Internal
 -- Copyright : (c) Colin Woodbury 2016 - 2018
--- License   : Apache 2
+-- License   : BSD3
 -- Maintainer: Colin Woodbury <colingw@gmail.com>
 --
 -- Raw Vector Tile data is stored as binary protobuf data.

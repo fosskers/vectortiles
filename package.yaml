@@ -14,7 +14,7 @@ description: ! 'GIS Vector Tiles, as defined by Mapbox.
 category: Geography
 author: Colin Woodbury
 maintainer: colingw@gmail.com
-license: Apache-2.0
+license: BSD3
 homepage: https://github.com/fosskers/vectortiles
 
 extra-source-files:
