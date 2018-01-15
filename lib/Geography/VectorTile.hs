@@ -12,17 +12,10 @@
 -- Note that currently this library ignores top-level protobuf extensions,
 -- /Value/ extensions, and /UNKNOWN/ geometries.
 --
--- The order in which to explore the modules of this library is as follows:
---
--- 1. "Geography.VectorTile.VectorTile"
--- 2. "Geography.VectorTile.Geometry"
--- 3. "Geography.VectorTile.Protobuf"
---
 -- == Usage
 --
--- This library reads and writes strict `ByteString`s. By importing this module,
--- you use the default protobuf backend. Given some legal
--- VectorTile file called @roads.mvt@:
+-- This library reads and writes strict `BS.ByteString`s.
+-- Given some legal VectorTile file called @roads.mvt@:
 --
 -- > import qualified Data.ByteString as BS
 -- > import           Data.Text (Text)
@@ -30,40 +23,54 @@
 -- >
 -- > -- | Read in raw protobuf data and decode it into a high-level type.
 -- > roads :: IO (Either Text VectorTile)
--- > roads = do
--- >   mvt <- BS.readFile "roads.mvt"
--- >   pure $ decode mvt >>= tile
+-- > roads = tile <$> BS.readFile "roads.mvt"
 --
--- Or encode a `VectorTile` back into a `ByteString`:
---
--- > roadsBytes :: VectorTile -> BS.ByteString
--- > roadsBytes = encode . untile
-
+-- Likewise, use the `untile` function to convert a `VectorTile` back into a `ByteString`.
 
 module Geography.VectorTile
-  ( -- * High-level Types
-    -- | This module also provides lenses for data field access,
-    -- as `VectorTile`s are highly nested objects.
-    module Geography.VectorTile.VectorTile
-  , -- * Protobuf Backend
-    -- ** Conversions
-    tile
+  ( -- * Vector Tiles
+    VectorTile(..)
+  , tile
   , untile
-  -- ** ByteString Encoding / Decoding
-  , decode
-  , encode
+  , Lens'
+  , layers
+  , Layer(..)
+  , version
+  , name
+  , points
+  , linestrings
+  , polygons
+  , extent
+  , Feature(..)
+  , featureId
+  , metadata
+  , geometries
+  , Val(..)
+  -- * Geometries
+  , Point, x, y
+  , LineString(..)
+  , Polygon(..)
+  , area
+  , surveyor
+  , distance
   ) where
 
-import           Data.Text (Text)
-import qualified Geography.VectorTile.Protobuf.Internal as PB
-import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
-import           Geography.VectorTile.Protobuf (decode, encode)
+import           Control.Monad ((>=>))
+import           Data.Bifunctor (bimap)
+import qualified Data.ByteString as BS
+import           Data.ByteString.Lazy (fromStrict, toStrict)
+import           Data.Text (Text, pack)
+import           Geography.VectorTile.Protobuf.Internal (fromProtobuf, toProtobuf)
 import           Geography.VectorTile.VectorTile
+import           Geography.VectorTile.Geometry
+import           Text.ProtocolBuffers.WireMessage (messageGet, messagePut)
 
 ---
 
-tile :: Tile.Tile -> Either Text VectorTile
-tile = PB.fromProtobuf
+-- | Attempt to parse a `VectorTile` from a strict collection of bytes.
+tile :: BS.ByteString -> Either Text VectorTile
+tile = bimap pack id . messageGet . fromStrict >=> fromProtobuf . fst
 
-untile :: VectorTile -> Tile.Tile
-untile = PB.toProtobuf
+-- | Convert a `VectorTile` back into bytes.
+untile :: VectorTile -> BS.ByteString
+untile = toStrict . messagePut . toProtobuf
