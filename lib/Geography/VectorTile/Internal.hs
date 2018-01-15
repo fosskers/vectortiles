@@ -50,12 +50,12 @@ module Geography.VectorTile.Internal
   ) where
 
 import           Control.Applicative ((<|>))
-import           Control.Monad.Trans.State.Lazy
+import           Control.Monad.Trans.State.Strict
 import           Data.Bits
 import           Data.Foldable (foldrM, foldlM, toList)
 import           Data.Int
 import           Data.List (nub)
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
 import           Data.Monoid
 import qualified Data.Sequence as Seq
