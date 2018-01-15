@@ -2,9 +2,9 @@
 
 -- |
 -- Module    : Geography.VectorTile.Util
--- Copyright : (c) Azavea, 2016
--- License   : Apache 2
--- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
+-- Copyright : (c) Colin Woodbury 2016 - 2018
+-- License   : BSD3
+-- Maintainer: Colin Woodbury <colingw@gmail.com>
 
 module Geography.VectorTile.Util where
 

@@ -5,12 +5,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 -- |
--- Module    : Geography.VectorTile.Protobuf.Internal
--- Copyright : (c) Azavea, 2016 - 2017
--- License   : Apache 2
--- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
+-- Module    : Geography.VectorTile.Internal
+-- Copyright : (c) Colin Woodbury 2016 - 2018
+-- License   : BSD3
+-- Maintainer: Colin Woodbury <colingw@gmail.com>
 --
 -- Raw Vector Tile data is stored as binary protobuf data.
 -- This module reads and writes raw protobuf ByteStrings between a data type
@@ -19,17 +20,20 @@
 --
 -- As this raw version of the data is hard to work with, in practice we convert
 -- to a more canonical Haskell type for further processing.
--- See "Geography.VectorTile.VectorTile" for the user-friendly version.
---
--- Please import this module @qualified@ to avoid namespace clashes:
---
--- > import qualified Geography.VectorTile.Protobuf.Internal as PB
+-- See "Geography.VectorTile" for the user-friendly version.
 
-module Geography.VectorTile.Protobuf.Internal
+module Geography.VectorTile.Internal
   ( -- * Types
+    -- ** Protobuf Conversion
     Protobuf(..)
   , Protobuffable(..)
   , ProtobufGeom(..)
+    -- ** Decoded Middle-Types
+  , Tile.Tile(Tile, layers)
+  , Layer.Layer(Layer, version, name, features, keys, values, extent)
+  , Feature.Feature(..)
+  , Value.Value(..)
+  , GeomType.GeomType(..)
     -- * Commands
   , Command(..)
   , commands
@@ -41,8 +45,8 @@ module Geography.VectorTile.Protobuf.Internal
     -- | Due to Protobuf Layers and Features having their data coupled,
     -- we can't define a `Protobuffable` instance for `VT.Feature`s,
     -- and instead must use the two functions below.
-  , features
-  , unfeature
+  , feats
+  , unfeats
   ) where
 
 import           Control.Applicative ((<|>))
@@ -98,7 +102,7 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- features (map (toStrict . decodeUtf8 . utf8) . toList $ Layer.keys l) (toList $ Layer.values l) . toList $ Layer.features l
+    (ps,ls,polys) <- feats (map (toStrict . decodeUtf8 . utf8) . toList $ Layer.keys l) (toList $ Layer.values l) . toList $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
                   , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
                   , VT._points = ps
@@ -113,18 +117,11 @@ instance Protobuffable VT.Layer where
                              , Layer.values    = Seq.fromList $ map toProtobuf vs
                              , Layer.extent    = Just . fromIntegral $ VT._extent l
                              , Layer.ext'field = defaultValue }
-  -- TODO Remove this, it was just for reference during a refactor.
-  -- toProtobuf l = RawLayer { _version = putField . fromIntegral $ VT._version l
-  --                         , _name = putField $ VT._name l
-  --                         , _features = putField fs
-  --                         , _keys = putField ks
-  --                         , _values = putField $ map toProtobuf vs
-  --                         , _extent = putField . Just . fromIntegral $ VT._extent l }
     where (ks,vs) = totalMeta (VT._points l) (VT._linestrings l) (VT._polygons l)
           (km,vm) = (M.fromList $ zip ks [0..], M.fromList $ zip vs [0..])
-          fs = V.toList $ V.concat [ V.map (unfeature km vm GeomType.POINT) (VT._points l)
-                                   , V.map (unfeature km vm GeomType.LINESTRING) (VT._linestrings l)
-                                   , V.map (unfeature km vm GeomType.POLYGON) (VT._polygons l) ]
+          fs = V.toList $ V.concat [ V.map (unfeats km vm GeomType.POINT) (VT._points l)
+                                   , V.map (unfeats km vm GeomType.LINESTRING) (VT._linestrings l)
+                                   , V.map (unfeats km vm GeomType.POLYGON) (VT._polygons l) ]
 
 instance Protobuffable VT.Val where
   fromProtobuf v = mtoe "Value decode: No legal Value type offered" $
@@ -141,7 +138,7 @@ instance Protobuffable VT.Val where
   toProtobuf (VT.Do v)  = defaultValue { Value.double_value = Just v }
   toProtobuf (VT.I64 v) = defaultValue { Value.int_value    = Just v }
   toProtobuf (VT.W64 v) = defaultValue { Value.uint_value   = Just v }
-  toProtobuf (VT.S64 v) = defaultValue { Value.sint_value   = Just v }  -- TODO Does this handle the zigzagging correctly?
+  toProtobuf (VT.S64 v) = defaultValue { Value.sint_value   = Just v }
   toProtobuf (VT.B v)   = defaultValue { Value.bool_value   = Just v }
 
 -- | Any classical type considered a GIS "geometry". These must be able
@@ -285,10 +282,10 @@ uncommands = U.toList . U.concat . map f
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-features :: [Text] -> [Value.Value] -> [Feature.Feature]
+feats :: [Text] -> [Value.Value] -> [Feature.Feature]
   -> Either Text (V.Vector (VT.Feature G.Point), V.Vector (VT.Feature G.LineString), V.Vector (VT.Feature G.Polygon))
-features _ _ [] = Left "VectorTile.features: `[RawFeature]` empty"
-features keys vals fs = (,,) <$> ps <*> ls <*> polys
+feats _ _ [] = Left "VectorTile.features: `[RawFeature]` empty"
+feats keys vals fs = (,,) <$> ps <*> ls <*> polys
   where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
         ps = foldrM f V.empty $ filter (\fe -> Feature.type' fe == Just GeomType.POINT) fs
         ls = foldrM f V.empty $ filter (\fe -> Feature.type' fe == Just GeomType.LINESTRING) fs
@@ -323,8 +320,8 @@ totalMeta ps ls polys = (keys, vals)
         g = V.foldr (\feat acc -> M.elems (VT._metadata feat) : acc) []
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeature :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
-unfeature keys vals gt fe = Feature.Feature
+unfeats :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
+unfeats keys vals gt fe = Feature.Feature
                             { Feature.id       = Just . fromIntegral $ VT._featureId fe
                             , Feature.tags     = Seq.fromList $ tags fe
                             , Feature.type'    = Just gt

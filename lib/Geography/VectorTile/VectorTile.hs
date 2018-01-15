@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE Rank2Types #-}
 
 -- |
 -- Module    : Geography.VectorTile.VectorTile
--- Copyright : (c) Azavea, 2016 - 2017
--- License   : Apache 2
--- Maintainer: Colin Woodbury <cwoodbury@azavea.com>
+-- Copyright : (c) Colin Woodbury 2016 - 2018
+-- License   : BSD3
+-- Maintainer: Colin Woodbury <colingw@gmail.com>
 --
 -- High-level types for representing Vector Tiles.
 
@@ -22,6 +23,7 @@ module Geography.VectorTile.VectorTile
     --
     -- These lenses are written in a generic way to avoid taking a dependency
     -- on one of the lens libraries.
+  , Lens'
   , layers
   , version
   , name
@@ -45,13 +47,15 @@ import           Geography.VectorTile.Geometry
 
 ---
 
+-- | Simple Lenses compatible with both lens and microlens.
+type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
+
 -- | A high-level representation of a Vector Tile. Implemented internally
 -- as a `M.Map`, so that access to individual layers can be fast if you
 -- know the layer names ahead of time.
 newtype VectorTile = VectorTile { _layers :: M.Map Text Layer } deriving (Eq,Show,Generic)
 
--- | > Lens' VectorTile (Map Text Layer)
-layers :: Functor f => (M.Map Text Layer -> f (M.Map Text Layer)) -> VectorTile -> f VectorTile
+layers :: Lens' VectorTile (M.Map Text Layer)
 layers f v = VectorTile <$> f (_layers v)
 {-# INLINE layers #-}
 
@@ -68,33 +72,27 @@ data Layer = Layer { _version :: Word  -- ^ The version of the spec we follow. S
                    , _extent :: Word  -- ^ Default: 4096
                    } deriving (Eq,Show,Generic)
 
--- | > Lens' Layer Int
-version :: Functor f => (Word -> f Word) -> Layer -> f Layer
+version :: Lens' Layer Word
 version f l = (\v -> l { _version = v }) <$> f (_version l)
 {-# INLINE version #-}
 
--- | > Lens' Layer Text
-name :: Functor f => (Text -> f Text) -> Layer -> f Layer
+name :: Lens' Layer Text
 name f l = (\v -> l { _name = v }) <$> f (_name l)
 {-# INLINE name #-}
 
--- | > Lens' Layer (Vector (Feature Point))
-points :: Functor f => (V.Vector (Feature Point) -> f (V.Vector (Feature Point))) -> Layer -> f Layer
+points :: Lens' Layer (V.Vector (Feature Point))
 points f l = (\v -> l { _points = v }) <$> f (_points l)
 {-# INLINE points #-}
 
--- | > Lens' Layer (Vector (Feature LineString)))
-linestrings :: Functor f => (V.Vector (Feature LineString) -> f (V.Vector (Feature LineString))) -> Layer -> f Layer
+linestrings :: Lens' Layer (V.Vector (Feature LineString))
 linestrings f l = (\v -> l { _linestrings = v }) <$> f (_linestrings l)
 {-# INLINE linestrings #-}
 
--- | > Lens' Layer (Vector (Feature Polygon)))
-polygons :: Functor f => (V.Vector (Feature Polygon) -> f (V.Vector (Feature Polygon))) -> Layer -> f Layer
+polygons :: Lens' Layer (V.Vector (Feature Polygon))
 polygons f l = (\v -> l { _polygons = v }) <$> f (_polygons l)
 {-# INLINE polygons #-}
 
--- | > Lens' Layer Int
-extent :: Functor f => (Word -> f Word) -> Layer -> f Layer
+extent :: Lens' Layer Word
 extent f l = (\v -> l { _extent = v }) <$> f (_extent l)
 {-# INLINE extent #-}
 
@@ -117,18 +115,15 @@ data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
                          , _metadata :: M.Map Text Val
                          , _geometries :: V.Vector g } deriving (Eq,Show,Generic)
 
--- | > Lens' (Feature g) Int
-featureId :: Functor f => (Word -> f Word) -> Feature g -> f (Feature g)
+featureId :: Lens' (Feature g) Word
 featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
 {-# INLINE featureId #-}
 
--- | > Lens' (Feature g) (Map Text Val)
-metadata :: Functor f => (M.Map Text Val -> f (M.Map Text Val)) -> Feature g -> f (Feature g)
+metadata :: Lens' (Feature g) (M.Map Text Val)
 metadata f l = (\v -> l { _metadata = v }) <$> f (_metadata l)
 {-# INLINE metadata #-}
 
--- | > Lens' (Feature g) (Vector g)
-geometries :: Functor f => (V.Vector g -> f (V.Vector g)) -> Feature g -> f (Feature g)
+geometries :: Lens' (Feature g) (V.Vector g)
 geometries f l = (\v -> l { _geometries = v }) <$> f (_geometries l)
 {-# INLINE geometries #-}
 
