@@ -37,7 +37,6 @@ ghc-options:
 dependencies:
   - base >=4.9 && <4.11
   - bytestring
-  - cereal >=0.5 && <0.6
   - containers
   - protocol-buffers >= 2.4 && < 2.5
   - protocol-buffers-descriptor >= 2.4 && < 2.5
@@ -51,6 +50,7 @@ library:
     - Geography.VectorTile.Internal
   dependencies:
     - deepseq >=1.4 && <1.5
+    - parallel
     - transformers >=0.5 && <0.6
 
 tests:
