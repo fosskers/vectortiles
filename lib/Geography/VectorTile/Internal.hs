@@ -50,15 +50,15 @@ module Geography.VectorTile.Internal
   ) where
 
 import           Control.Applicative ((<|>))
-import           Control.Parallel (par)
 import           Control.Monad.Trans.State.Strict
 import           Data.Bits
-import           Data.Foldable (foldrM, foldlM, toList)
+import           Data.Foldable (fold, foldrM, foldlM, toList)
 import           Data.Int
 import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
 import           Data.Monoid
 import qualified Data.Sequence as Seq
+import           Data.Sequence ((<|), (|>))
 import qualified Data.Set as S
 import           Data.Text (Text, pack)
 import           Data.Text.Lazy (toStrict, fromStrict)
@@ -194,7 +194,7 @@ instance ProtobufGeom G.Polygon where
             curr <- get
             let ps' = expand curr (U.cons (U.head p) ps)
             put $ U.last ps'
-            fmap (V.cons (G.Polygon (U.snoc ps' $ U.head ps') V.empty)) <$> f rs
+            fmap (V.cons (G.Polygon (U.snoc ps' $ U.head ps') Seq.Empty)) <$> f rs
           f [] = pure $ Right V.empty
           f _  = pure . Left . pack $ printf "Polygon decode: Invalid command sequence given: %s" (show cs)
           g acc p | G.area p > 0 = do  -- New external rings.
@@ -202,14 +202,15 @@ instance ProtobufGeom G.Polygon where
                       put p
                       pure $ V.snoc acc curr
                   | otherwise = do  -- Next internal ring.
-                      modify (\s -> s { G.inner = V.snoc (G.inner s) p })
+                      modify (\s -> s { G.inner = G.inner s |> p })
                       pure acc
 
-  toCommands ps = concat $ evalState (mapM f ps) (0,0)
-    where f (G.Polygon p i) = do
+  toCommands ps = toList . fold $ evalState (traverse f ps) (0,0)
+    where f :: G.Polygon -> State (Int, Int) (Seq.Seq Command)
+          f (G.Polygon p i) = do
             l <- U.mapM collapse $ U.init p  -- Exclude the final point.
-            let cs = [MoveTo . U.singleton $ U.head l, LineTo $ U.tail l, ClosePath]
-            concat . V.cons cs <$> mapM f i
+            let cs = MoveTo (U.singleton $ U.head l) <| LineTo (U.tail l) <| ClosePath <| Seq.Empty
+            fold . (cs <|) <$> traverse f i
 
 -- | The possible commands, and the values they hold.
 data Command = MoveTo (U.Vector (Int,Int))
@@ -262,6 +263,8 @@ uncommands = U.toList . U.concat . map f
   where f (MoveTo ps) = U.cons (unparseCmd (1, U.length ps)) $ params ps
         f (LineTo ls) = U.cons (unparseCmd (2, U.length ls)) $ params ls
         f ClosePath = U.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
+
+-- TODO Use Seq for both of these!!!
 
 {- FROM PROTOBUF -}
 

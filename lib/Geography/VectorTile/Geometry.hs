@@ -47,7 +47,7 @@ instance NFData LineString
 -- and that interior holes have counter-clockwise winding order.
 -- These assume that the origin (0,0) is in the *top-left* corner.
 data Polygon = Polygon { polyPoints :: U.Vector Point
-                       , inner :: V.Vector Polygon } deriving (Eq,Show,Generic)
+                       , inner :: Seq.Seq Polygon } deriving (Eq,Show,Generic)
 
 instance NFData Polygon
 
