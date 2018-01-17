@@ -56,7 +56,7 @@ import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
 import           Data.Monoid
 import qualified Data.Sequence as Seq
-import           Data.Sequence ((<|), (|>), Seq((:<|)))
+import           Data.Sequence (Seq, (<|), (|>), Seq((:<|)))
 import qualified Data.Set as S
 import           Data.Text (Text, pack)
 import           Data.Text.Lazy (toStrict, fromStrict)
@@ -99,7 +99,7 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- feats (toStrict . decodeUtf8 . utf8 <$> Layer.keys l) (Layer.values l) . toList $ Layer.features l
+    (ps,ls,polys) <- feats (toStrict . decodeUtf8 . utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
                   , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
                   , VT._points = ps
@@ -141,8 +141,8 @@ instance Protobuffable VT.Val where
 -- | Any classical type considered a GIS "geometry". These must be able
 -- to convert between an encodable list of `Command`s.
 class ProtobufGeom g where
-  fromCommands :: Seq.Seq Command -> Either Text (Seq.Seq g)
-  toCommands :: Seq.Seq g -> Seq.Seq Command
+  fromCommands :: Seq Command -> Either Text (Seq g)
+  toCommands :: Seq g -> Seq Command
 
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
@@ -202,15 +202,15 @@ instance ProtobufGeom G.Polygon where
                       pure acc
 
   toCommands ps = fold $ evalState (traverse f ps) (0,0)
-    where f :: G.Polygon -> State (Int, Int) (Seq.Seq Command)
+    where f :: G.Polygon -> State (Int, Int) (Seq Command)
           f (G.Polygon p i) = do
             l <- U.mapM collapse $ U.init p  -- Exclude the final point.
             let cs = MoveTo (Seq.singleton $ U.head l) <| LineTo (Seq.fromList . U.toList $ U.tail l) <| ClosePath <| Seq.Empty
             fold . (cs <|) <$> traverse f i
 
 -- | The possible commands, and the values they hold.
-data Command = MoveTo (Seq.Seq (Int,Int))
-             | LineTo (Seq.Seq (Int,Int))
+data Command = MoveTo (Seq (Int,Int))
+             | LineTo (Seq (Int,Int))
              | ClosePath deriving (Eq,Show)
 
 -- | Z-encode a 64-bit Int.
@@ -240,7 +240,7 @@ unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
 -- | Attempt to parse a list of Command/Parameter integers, as defined here:
 --
 -- https://github.com/mapbox/vector-tile-spec/tree/master/2.1#43-geometry-encoding
-commands :: Seq.Seq Word32 -> Either Text (Seq.Seq Command)
+commands :: Seq Word32 -> Either Text (Seq Command)
 commands Seq.Empty = Right Seq.Empty
 commands (n :<| ns) = parseCmd n >>= f
   where f (1,count) = do
@@ -258,7 +258,7 @@ commands (n :<| ns) = parseCmd n >>= f
 
 -- | Convert a list of parsed `Command`s back into their original Command
 -- and Z-encoded Parameter integer forms.
-uncommands :: Seq.Seq Command -> Seq.Seq Word32
+uncommands :: Seq Command -> Seq Word32
 uncommands = (>>= f)
   where f (MoveTo ps) = unparseCmd (1, length ps) <| params ps
         f (LineTo ls) = unparseCmd (2, length ls) <| params ls
@@ -285,16 +285,16 @@ uncommands = (>>= f)
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-feats :: Seq.Seq Text -> Seq.Seq Value.Value -> [Feature.Feature]
-  -> Either Text (Seq.Seq (VT.Feature G.Point), Seq.Seq (VT.Feature G.LineString), Seq.Seq (VT.Feature G.Polygon))
-feats _ _ [] = Left "VectorTile.features: `[RawFeature]` empty"
+feats :: Seq Text -> Seq Value.Value -> Seq Feature.Feature
+  -> Either Text (Seq (VT.Feature G.Point), Seq (VT.Feature G.LineString), Seq (VT.Feature G.Polygon))
+feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
 feats keys vals fs = (,,) <$> ps <*> ls <*> polys
   where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
-        ps = foldrM f Seq.Empty $ filter (\fe -> Feature.type' fe == Just GeomType.POINT) fs
-        ls = foldrM f Seq.Empty $ filter (\fe -> Feature.type' fe == Just GeomType.LINESTRING) fs
-        polys = foldrM f Seq.Empty $ filter (\fe -> Feature.type' fe == Just GeomType.POLYGON) fs
+        ps = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.POINT) fs
+        ls = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.LINESTRING) fs
+        polys = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.POLYGON) fs
 
-        f :: ProtobufGeom g => Feature.Feature -> Seq.Seq (VT.Feature g) -> Either Text (Seq.Seq (VT.Feature g))
+        f :: ProtobufGeom g => Feature.Feature -> Seq (VT.Feature g) -> Either Text (Seq (VT.Feature g))
         f x acc = do
           geos <- commands (Feature.geometry x) >>= fromCommands
           meta <- getMeta keys vals $ Feature.tags x
@@ -302,14 +302,17 @@ feats keys vals fs = (,,) <$> ps <*> ls <*> polys
                             , VT._metadata   = meta
                             , VT._geometries = geos } <| acc
 
-getMeta :: Seq.Seq Text -> Seq.Seq Value.Value -> Seq.Seq Word32 -> Either Text (M.Map Text VT.Val)
+-- TODO These `foldrM` are probably bad too.
+-- Can `traverse` not handle this somehow?
+
+getMeta :: Seq Text -> Seq Value.Value -> Seq Word32 -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
   kv <- fmap (both fromIntegral) <$> pairs' tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
 
-totalMeta :: Seq.Seq (VT.Feature G.Point) -> Seq.Seq (VT.Feature G.LineString) -> Seq.Seq (VT.Feature G.Polygon) -> ([Text], [VT.Val])
+totalMeta :: Seq (VT.Feature G.Point) -> Seq (VT.Feature G.LineString) -> Seq (VT.Feature G.Polygon) -> ([Text], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
   where keys = S.toList $ f ps <> f ls <> f polys
         vals = S.toList $ g ps <> g ls <> g polys
@@ -328,15 +331,15 @@ unfeats keys vals gt fe = Feature.Feature
 
 {- UTIL -}
 
--- | Transform a `Seq.Seq` of `Point`s into one of Z-encoded Parameter ints.
-params :: Seq.Seq (Int,Int) -> Seq.Seq Word32
+-- | Transform a `Seq` of `Point`s into one of Z-encoded Parameter ints.
+params :: Seq (Int,Int) -> Seq Word32
 params = foldl' (\acc (a,b) -> acc |> zig a |> zig b) Seq.Empty
 
 -- | Expand a pair of diffs from some reference point into that of a `Point` value.
 expand :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
 expand = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
 
-expand' :: (Int, Int) -> Seq.Seq (Int, Int) -> Seq.Seq (Int, Int)
+expand' :: (Int, Int) -> Seq (Int, Int) -> Seq (Int, Int)
 expand' curr s = Seq.drop 1 $ Seq.scanl (\(x, y) (dx, dy) -> (x + dx, y + dy)) curr s
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
