@@ -10,7 +10,7 @@
 module Geography.VectorTile.Geometry
   ( -- * Geometries
     -- ** Types
-    Point, x, y
+    Point, pattern Point, x, y
   , LineString(..)
   , Polygon(..)
   -- ** Operations
