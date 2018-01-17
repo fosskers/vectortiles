@@ -51,7 +51,10 @@ suite op ls pl rd cl = testGroup "Unit Tests"
       ]
     ]
   , testGroup "Geometries"
-    [ testCase "Z-encoding Isomorphism" zencoding
+    [ testCase "area" $ area poly @?= 1
+    , testCase "surveyor - outer" . assert $ surveyor (polyPoints poly) > 0
+    , testCase "surveyor - inner" . assert $ surveyor (U.reverse $ polyPoints poly) < 0
+    , testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
     , testCase "[Word32] <-> [Command]" commandIso
     , testCase "[Word32] <-> V.Vector Point" pointIso
@@ -192,3 +195,7 @@ polygonIso3 = cs' @?= cs
   where cs = [ 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15, 9, 2, 3, 26, 0, 2, 2, 0, 0, 1, 15
              , 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15 ]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @Polygon)
+
+poly :: Polygon
+poly = Polygon ps mempty
+  where ps = U.fromList [(0,0), (1,0), (1,1), (0,1), (0,0)]
