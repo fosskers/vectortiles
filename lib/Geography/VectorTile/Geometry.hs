@@ -22,7 +22,6 @@ module Geography.VectorTile.Geometry
 import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldl')
 import qualified Data.Sequence as Seq
-import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           GHC.Generics (Generic)
 

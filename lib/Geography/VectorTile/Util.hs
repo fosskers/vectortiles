@@ -8,6 +8,7 @@
 
 module Geography.VectorTile.Util where
 
+import Data.Sequence (Seq, (|>), Seq(Empty, (:<|)))
 import Data.Text (Text)
 
 ---
@@ -17,7 +18,17 @@ import Data.Text (Text)
 pairs :: [a] -> Either Text [(a,a)]
 pairs [] = Right []
 pairs [_] = Left "Uneven number of parameters given."
-pairs (x:y:zs) = ((x,y) :) <$>  pairs zs
+pairs (x:y:zs) = ((x,y) :) <$> pairs zs
+
+-- TODO Delete original `pairs`?
+
+pairs' :: Seq a -> Either Text (Seq (a, a))
+pairs' Empty = Right Empty
+pairs' s | odd $ length s = Left "Uneven number of parameters given."
+         | otherwise = Right $ go Empty s
+  where go acc Empty = acc
+        go acc (x :<| y :<| zs) = go (acc |> (x,y)) zs
+        go acc (_ :<| Empty) = acc
 
 -- | Flatten a list of pairs. Equivalent to:
 --

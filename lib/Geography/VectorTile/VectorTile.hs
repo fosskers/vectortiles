@@ -39,8 +39,8 @@ module Geography.VectorTile.VectorTile
 import           Control.DeepSeq (NFData)
 import           Data.Int
 import qualified Data.Map.Lazy as M
+import qualified Data.Sequence as Seq
 import           Data.Text (Text)
-import qualified Data.Vector as V
 import           Data.Word
 import           GHC.Generics (Generic)
 import           Geography.VectorTile.Geometry
@@ -64,12 +64,12 @@ instance NFData VectorTile
 -- | A layer, which could contain any number of `Feature`s of any `Geometry` type.
 -- This codec only respects the canonical three `Geometry` types, and we split
 -- them here explicitely to allow for more fine-grained access to each type.
-data Layer = Layer { _version :: Word  -- ^ The version of the spec we follow. Should always be 2.
-                   , _name :: Text
-                   , _points :: V.Vector (Feature Point)
-                   , _linestrings :: V.Vector (Feature LineString)
-                   , _polygons :: V.Vector (Feature Polygon)
-                   , _extent :: Word  -- ^ Default: 4096
+data Layer = Layer { _version     :: Word  -- ^ The version of the spec we follow. Should always be 2.
+                   , _name        :: Text
+                   , _points      :: Seq.Seq (Feature Point)
+                   , _linestrings :: Seq.Seq (Feature LineString)
+                   , _polygons    :: Seq.Seq (Feature Polygon)
+                   , _extent      :: Word  -- ^ Default: 4096
                    } deriving (Eq,Show,Generic)
 
 version :: Lens' Layer Word
@@ -80,15 +80,15 @@ name :: Lens' Layer Text
 name f l = (\v -> l { _name = v }) <$> f (_name l)
 {-# INLINE name #-}
 
-points :: Lens' Layer (V.Vector (Feature Point))
+points :: Lens' Layer (Seq.Seq (Feature Point))
 points f l = (\v -> l { _points = v }) <$> f (_points l)
 {-# INLINE points #-}
 
-linestrings :: Lens' Layer (V.Vector (Feature LineString))
+linestrings :: Lens' Layer (Seq.Seq (Feature LineString))
 linestrings f l = (\v -> l { _linestrings = v }) <$> f (_linestrings l)
 {-# INLINE linestrings #-}
 
-polygons :: Lens' Layer (V.Vector (Feature Polygon))
+polygons :: Lens' Layer (Seq.Seq (Feature Polygon))
 polygons f l = (\v -> l { _polygons = v }) <$> f (_polygons l)
 {-# INLINE polygons #-}
 
@@ -113,7 +113,7 @@ instance NFData Layer
 -- the same thing, as a `V.Vector` of that `Geometry`.
 data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
                          , _metadata :: M.Map Text Val
-                         , _geometries :: V.Vector g } deriving (Eq,Show,Generic)
+                         , _geometries :: Seq.Seq g } deriving (Eq,Show,Generic)
 
 featureId :: Lens' (Feature g) Word
 featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
@@ -123,7 +123,7 @@ metadata :: Lens' (Feature g) (M.Map Text Val)
 metadata f l = (\v -> l { _metadata = v }) <$> f (_metadata l)
 {-# INLINE metadata #-}
 
-geometries :: Lens' (Feature g) (V.Vector g)
+geometries :: Lens' (Feature g) (Seq.Seq g)
 geometries f l = (\v -> l { _geometries = v }) <$> f (_geometries l)
 {-# INLINE geometries #-}
 
