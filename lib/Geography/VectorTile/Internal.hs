@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
@@ -52,7 +50,7 @@ module Geography.VectorTile.Internal
 import           Control.Applicative ((<|>))
 import           Control.Monad.Trans.State.Strict
 import           Data.Bits
-import           Data.Foldable (fold, foldrM, foldlM, toList)
+import           Data.Foldable (fold, foldl', foldrM, foldlM, toList)
 import           Data.Int
 import qualified Data.Map.Lazy as M
 import           Data.Maybe (fromJust)
@@ -101,7 +99,7 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- feats (fmap (toStrict . decodeUtf8 . utf8) $ Layer.keys l) (Layer.values l) . toList $ Layer.features l
+    (ps,ls,polys) <- feats (toStrict . decodeUtf8 . utf8 <$> Layer.keys l) (Layer.values l) . toList $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
                   , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
                   , VT._points = ps
@@ -149,8 +147,7 @@ class ProtobufGeom g where
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  -- TODO Conversion bottleneck!
-  fromCommands (MoveTo ps :<| Seq.Empty) = Right . Seq.fromList . U.toList . expand (0, 0) . U.fromList . toList $ ps
+  fromCommands (MoveTo ps :<| Seq.Empty) = Right $ expand' (0, 0) ps
   fromCommands (c :<| _) = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands Seq.Empty = Left "No points given!"
 
@@ -257,6 +254,8 @@ commands (n :<| ns) = parseCmd n >>= f
         f (7,_) = (ClosePath <|) <$> commands ns
         f _ = Left "Sentinel: You should never see this."
 
+-- TODO Get Either out of the recursion and make this tail recursive.
+
 -- | Convert a list of parsed `Command`s back into their original Command
 -- and Z-encoded Parameter integer forms.
 uncommands :: Seq.Seq Command -> Seq.Seq Word32
@@ -264,8 +263,6 @@ uncommands = (>>= f)
   where f (MoveTo ps) = unparseCmd (1, length ps) <| params ps
         f (LineTo ls) = unparseCmd (2, length ls) <| params ls
         f ClosePath   = Seq.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
-
--- TODO Use Seq for both of these!!!
 
 {- FROM PROTOBUF -}
 
@@ -333,11 +330,14 @@ unfeats keys vals gt fe = Feature.Feature
 
 -- | Transform a `Seq.Seq` of `Point`s into one of Z-encoded Parameter ints.
 params :: Seq.Seq (Int,Int) -> Seq.Seq Word32
-params = foldr (\(a,b) acc -> zig a <| zig b <| acc) Seq.Empty
+params = foldl' (\acc (a,b) -> acc |> zig a |> zig b) Seq.Empty
 
 -- | Expand a pair of diffs from some reference point into that of a `Point` value.
 expand :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
 expand = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
+
+expand' :: (Int, Int) -> Seq.Seq (Int, Int) -> Seq.Seq (Int, Int)
+expand' curr s = Seq.drop 1 $ Seq.scanl (\(x, y) (dx, dy) -> (x + dx, y + dy)) curr s
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
 -- the previous point in the sequence. The reference point is moved
