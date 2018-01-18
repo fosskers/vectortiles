@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module    : Geography.VectorTile.Internal
@@ -288,22 +289,17 @@ uncommands = (>>= f)
 feats :: Seq Text -> Seq Value.Value -> Seq Feature.Feature
   -> Either Text (Seq (VT.Feature G.Point), Seq (VT.Feature G.LineString), Seq (VT.Feature G.Polygon))
 feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
-feats keys vals fs = (,,) <$> ps <*> ls <*> polys
-  where -- (_:ps':ls':polys':_) = groupBy sameGeom $ sortOn geomBias fs  -- ok ok ok
-        ps = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.POINT) fs
-        ls = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.LINESTRING) fs
-        polys = foldrM f Seq.Empty $ Seq.filter (\fe -> Feature.type' fe == Just GeomType.POLYGON) fs
-
-        f :: ProtobufGeom g => Feature.Feature -> Seq (VT.Feature g) -> Either Text (Seq (VT.Feature g))
-        f x acc = do
-          geos <- commands (Feature.geometry x) >>= fromCommands
-          meta <- getMeta keys vals $ Feature.tags x
-          pure $ VT.Feature { VT._featureId  = maybe 0 fromIntegral $ Feature.id x
-                            , VT._metadata   = meta
-                            , VT._geometries = geos } <| acc
-
--- TODO These `foldrM` are probably bad too.
--- Can `traverse` not handle this somehow?
+feats keys vals fs = foldlM g mempty fs
+  where f :: ProtobufGeom g => Feature.Feature -> Either Text (VT.Feature g)
+        f x = VT.Feature
+          <$> pure (maybe 0 fromIntegral $ Feature.id x)
+          <*> getMeta keys vals (Feature.tags x)
+          <*> (commands (Feature.geometry x) >>= fromCommands)
+        g !(pnt,lin,ply) fe = case Feature.type' fe of
+          Just GeomType.POINT      -> (\fe' -> (pnt |> fe', lin, ply)) <$> f fe
+          Just GeomType.LINESTRING -> (\fe' -> (pnt, lin |> fe', ply)) <$> f fe
+          Just GeomType.POLYGON    -> (\fe' -> (pnt, lin, ply |> fe')) <$> f fe
+          _ -> Left "Geometry type of UNKNOWN given."
 
 getMeta :: Seq Text -> Seq Value.Value -> Seq Word32 -> Either Text (M.Map Text VT.Val)
 getMeta keys vals tags = do
