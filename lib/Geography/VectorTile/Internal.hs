@@ -50,6 +50,7 @@ module Geography.VectorTile.Internal
   ) where
 
 import           Control.Applicative ((<|>))
+import           Control.Monad (void)
 import           Control.Monad.Trans.State.Strict
 import           Data.Bits
 import qualified Data.ByteString.Lazy as BL
@@ -122,7 +123,7 @@ instance Protobuffable VT.Layer where
                     , fmap (unfeats km vm GeomType.POLYGON) (VT._polygons l) ]
 
 instance Protobuffable VT.Val where
-  fromProtobuf v = mtoe "Value decode: No legal Value type offered" $
+  fromProtobuf v = maybe (Left "Value decode: No legal Value type offered") Right $
         fmap (VT.St . utf8) (Value.string_value v)
     <|> fmap VT.Fl  (Value.float_value v)
     <|> fmap VT.Do  (Value.double_value v)
@@ -217,17 +218,19 @@ data Command = MoveTo (Seq (Int,Int))
 -- | Z-encode a 64-bit Int.
 zig :: Int -> Word32
 zig n = fromIntegral $ shift n 1 `xor` shift n (-63)
+{-# INLINE zig #-}
 
 -- | Decode a Z-encoded Word32 into a 64-bit Int.
 unzig :: Word32 -> Int
 unzig n = fromIntegral (fromIntegral unzigged :: Int32)
   where unzigged = shift n (-1) `xor` negate (n .&. 1)
+{-# INLINE unzig #-}
 
 -- | Divide a "Command Integer" into its @(Command,Count)@.
 parseCmd :: Word32 -> Either Text (Int,Int)
 parseCmd n = case (cmd,count) of
-  (1,m) -> Right $ both fromIntegral (1,m)
-  (2,m) -> Right $ both fromIntegral (2,m)
+  (1,m) -> Right (1, fromIntegral m)
+  (2,m) -> Right (2, fromIntegral m)
   (7,1) -> Right (7,1)
   (7,m) -> Left $ "ClosePath was given a parameter count: " <> pack (show m)
   (m,_) -> Left . pack $ printf "Invalid command integer %d found in: %X" m n
@@ -237,6 +240,7 @@ parseCmd n = case (cmd,count) of
 -- | Recombine a Command ID and parameter count into a Command Integer.
 unparseCmd :: (Int,Int) -> Word32
 unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
+{-# INLINE unparseCmd #-}
 
 -- | Attempt to parse a list of Command/Parameter integers, as defined here:
 --
@@ -248,11 +252,11 @@ commands = go (Right Seq.Empty)
         go (Right !acc) (n :<| ns) = parseCmd n >>= \case
           (1, count) -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
-            mts <- MoveTo . fmap (both unzig) <$> pairs' ls
+            mts <- MoveTo <$> pairsWith unzig ls
             go (Right $ acc |> mts) rs
           (2, count) -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
-            mts <- LineTo . fmap (both unzig) <$> pairs' ls
+            mts <- LineTo <$> pairsWith unzig ls
             go (Right $ acc |> mts) rs
           (7, _) -> go (Right $ acc |> ClosePath) ns
           _ -> Left "Sentinel: You should never see this."
@@ -303,7 +307,7 @@ feats keys vals fs = foldlM g mempty fs
 
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
-  kv <- fmap (both fromIntegral) <$> pairs' tags
+  kv <- pairsWith fromIntegral tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
@@ -312,7 +316,7 @@ totalMeta :: Seq (VT.Feature G.Point) -> Seq (VT.Feature G.LineString) -> Seq (V
 totalMeta ps ls polys = (keys, vals)
   where keys = HS.toList $ f ps <> f ls <> f polys
         vals = HS.toList $ g ps <> g ls <> g polys
-        f = foldMap (HS.fromMap . fmap (const ()) . VT._metadata)
+        f = foldMap (HS.fromMap . void . VT._metadata)
         g = foldMap (HS.fromList . M.elems . VT._metadata)
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
@@ -323,7 +327,7 @@ unfeats keys vals gt fe = Feature.Feature
                             , Feature.type'    = Just gt
                             , Feature.geometry = uncommands . toCommands $ VT._geometries fe }
   where tags = unpairs . map f . M.toList . VT._metadata
-        f (k,v) = both (fromIntegral . fromJust) (M.lookup k keys, M.lookup v vals)
+        f (k,v) = (fromIntegral . fromJust $ M.lookup k keys, fromIntegral . fromJust $ M.lookup v vals)
 
 {- UTIL -}
 
