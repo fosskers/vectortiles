@@ -1,93 +1,93 @@
 benchmarking Decoding/onepoint.mvt/VectorTile
-time                 2.039 μs   (2.027 μs .. 2.052 μs)
+time                 1.974 μs   (1.962 μs .. 1.988 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 2.030 μs   (2.021 μs .. 2.042 μs)
-std dev              32.62 ns   (27.13 ns .. 40.53 ns)
-variance introduced by outliers: 16% (moderately inflated)
-
-benchmarking Decoding/linestring.mvt/VectorTile
-time                 2.577 μs   (2.560 μs .. 2.592 μs)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 2.575 μs   (2.562 μs .. 2.588 μs)
-std dev              45.69 ns   (37.18 ns .. 54.38 ns)
-variance introduced by outliers: 18% (moderately inflated)
-
-benchmarking Decoding/polygon.mvt/VectorTile
-time                 2.928 μs   (2.901 μs .. 2.962 μs)
-                     0.999 R²   (0.999 R² .. 1.000 R²)
-mean                 2.907 μs   (2.894 μs .. 2.927 μs)
-std dev              54.77 ns   (41.89 ns .. 68.80 ns)
-variance introduced by outliers: 20% (moderately inflated)
-
-benchmarking Decoding/roads.mvt/VectorTile
-time                 9.998 ms   (9.884 ms .. 10.12 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 9.894 ms   (9.830 ms .. 9.967 ms)
-std dev              187.7 μs   (148.1 μs .. 228.6 μs)
-
-benchmarking Encoding/Point/ByteString
-time                 1.915 μs   (1.900 μs .. 1.931 μs)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 1.916 μs   (1.905 μs .. 1.930 μs)
-std dev              41.91 ns   (33.79 ns .. 51.64 ns)
-variance introduced by outliers: 26% (moderately inflated)
-
-benchmarking Encoding/LineString/ByteString
-time                 2.784 μs   (2.762 μs .. 2.809 μs)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 2.776 μs   (2.762 μs .. 2.792 μs)
-std dev              52.43 ns   (41.99 ns .. 65.27 ns)
-variance introduced by outliers: 20% (moderately inflated)
-
-benchmarking Encoding/Polygon/ByteString
-time                 3.264 μs   (3.245 μs .. 3.289 μs)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 3.279 μs   (3.261 μs .. 3.303 μs)
-std dev              67.36 ns   (56.54 ns .. 79.79 ns)
+mean                 1.969 μs   (1.959 μs .. 1.983 μs)
+std dev              39.46 ns   (31.10 ns .. 47.11 ns)
 variance introduced by outliers: 22% (moderately inflated)
 
-benchmarking Encoding/Roads/ByteString
-time                 13.45 ms   (13.34 ms .. 13.60 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 13.32 ms   (13.24 ms .. 13.44 ms)
-std dev              247.9 μs   (191.1 μs .. 313.2 μs)
+benchmarking Decoding/linestring.mvt/VectorTile
+time                 2.508 μs   (2.493 μs .. 2.522 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 2.498 μs   (2.486 μs .. 2.512 μs)
+std dev              42.49 ns   (33.49 ns .. 53.58 ns)
+variance introduced by outliers: 17% (moderately inflated)
 
-benchmarking Data Access/All Layer Names/One Point
-time                 1.784 μs   (1.775 μs .. 1.798 μs)
+benchmarking Decoding/polygon.mvt/VectorTile
+time                 2.837 μs   (2.818 μs .. 2.860 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 2.818 μs   (2.806 μs .. 2.836 μs)
+std dev              46.68 ns   (35.29 ns .. 58.04 ns)
+variance introduced by outliers: 16% (moderately inflated)
+
+benchmarking Decoding/roads.mvt/VectorTile
+time                 9.982 ms   (9.893 ms .. 10.07 ms)
                      1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 1.797 μs   (1.786 μs .. 1.811 μs)
-std dev              42.70 ns   (37.34 ns .. 48.93 ns)
-variance introduced by outliers: 29% (moderately inflated)
+mean                 9.837 ms   (9.774 ms .. 9.903 ms)
+std dev              181.5 μs   (149.6 μs .. 231.0 μs)
 
-benchmarking Data Access/All Layer Names/One LineString
-time                 2.227 μs   (2.215 μs .. 2.241 μs)
-                     0.999 R²   (0.997 R² .. 1.000 R²)
-mean                 2.231 μs   (2.218 μs .. 2.248 μs)
-std dev              50.28 ns   (40.66 ns .. 58.39 ns)
+benchmarking Encoding/Point/ByteString
+time                 1.895 μs   (1.879 μs .. 1.917 μs)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 1.894 μs   (1.881 μs .. 1.907 μs)
+std dev              43.18 ns   (37.39 ns .. 49.85 ns)
 variance introduced by outliers: 27% (moderately inflated)
 
-benchmarking Data Access/All Layer Names/One Polygon
-time                 2.460 μs   (2.450 μs .. 2.476 μs)
+benchmarking Encoding/LineString/ByteString
+time                 2.871 μs   (2.820 μs .. 2.936 μs)
+                     0.998 R²   (0.996 R² .. 1.000 R²)
+mean                 2.833 μs   (2.814 μs .. 2.870 μs)
+std dev              81.34 ns   (56.00 ns .. 139.8 ns)
+variance introduced by outliers: 36% (moderately inflated)
+
+benchmarking Encoding/Polygon/ByteString
+time                 3.388 μs   (3.375 μs .. 3.403 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 2.464 μs   (2.455 μs .. 2.480 μs)
-std dev              39.29 ns   (26.68 ns .. 53.67 ns)
-variance introduced by outliers: 15% (moderately inflated)
+mean                 3.377 μs   (3.364 μs .. 3.392 μs)
+std dev              43.30 ns   (35.74 ns .. 56.80 ns)
+variance introduced by outliers: 10% (moderately inflated)
+
+benchmarking Encoding/Roads/ByteString
+time                 13.47 ms   (13.34 ms .. 13.63 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 13.40 ms   (13.30 ms .. 13.51 ms)
+std dev              269.7 μs   (201.9 μs .. 379.8 μs)
+
+benchmarking Data Access/All Layer Names/One Point
+time                 1.756 μs   (1.748 μs .. 1.766 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 1.750 μs   (1.744 μs .. 1.757 μs)
+std dev              22.70 ns   (17.94 ns .. 30.14 ns)
+variance introduced by outliers: 11% (moderately inflated)
+
+benchmarking Data Access/All Layer Names/One LineString
+time                 2.163 μs   (2.155 μs .. 2.172 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 2.159 μs   (2.152 μs .. 2.169 μs)
+std dev              27.54 ns   (20.90 ns .. 39.74 ns)
+variance introduced by outliers: 10% (moderately inflated)
+
+benchmarking Data Access/All Layer Names/One Polygon
+time                 2.391 μs   (2.381 μs .. 2.402 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 2.390 μs   (2.378 μs .. 2.405 μs)
+std dev              45.52 ns   (35.63 ns .. 56.11 ns)
+variance introduced by outliers: 20% (moderately inflated)
 
 benchmarking Data Access/All Layer Names/roads.mvt
-time                 6.471 ms   (6.401 ms .. 6.540 ms)
-                     0.999 R²   (0.998 R² .. 1.000 R²)
-mean                 6.417 ms   (6.385 ms .. 6.455 ms)
-std dev              105.6 μs   (82.49 μs .. 146.1 μs)
+time                 6.461 ms   (6.394 ms .. 6.526 ms)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 6.432 ms   (6.386 ms .. 6.471 ms)
+std dev              116.1 μs   (94.02 μs .. 157.2 μs)
 
 benchmarking Data Access/First Polygon/One Polygon
-time                 1.784 μs   (1.776 μs .. 1.792 μs)
-                     1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 1.794 μs   (1.783 μs .. 1.806 μs)
-std dev              37.71 ns   (31.60 ns .. 43.42 ns)
-variance introduced by outliers: 24% (moderately inflated)
+time                 1.774 μs   (1.759 μs .. 1.792 μs)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 1.776 μs   (1.767 μs .. 1.789 μs)
+std dev              36.19 ns   (29.99 ns .. 48.72 ns)
+variance introduced by outliers: 23% (moderately inflated)
 
 benchmarking Data Access/First Polygon/roads.mvt - water layer
-time                 6.451 ms   (6.416 ms .. 6.483 ms)
+time                 6.448 ms   (6.404 ms .. 6.490 ms)
                      1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 6.463 ms   (6.432 ms .. 6.505 ms)
-std dev              107.8 μs   (77.77 μs .. 145.4 μs)
+mean                 6.445 ms   (6.413 ms .. 6.483 ms)
+std dev              103.3 μs   (76.79 μs .. 140.6 μs)

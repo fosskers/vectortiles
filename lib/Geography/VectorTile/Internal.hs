@@ -54,7 +54,7 @@ import           Control.Monad (void)
 import           Control.Monad.Trans.State.Strict
 import           Data.Bits
 import qualified Data.ByteString.Lazy as BL
-import           Data.Foldable (fold, foldl', foldrM, foldlM, toList)
+import           Data.Foldable (fold, foldl', foldlM, toList)
 import           Data.Int
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as HS
@@ -308,7 +308,7 @@ feats keys vals fs = foldlM g mempty fs
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
   kv <- pairsWith fromIntegral tags
-  foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
+  foldlM (\acc (k,v) -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
 
