@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Module    : Geography.VectorTile.Internal
@@ -242,20 +243,20 @@ unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
 --
 -- https://github.com/mapbox/vector-tile-spec/tree/master/2.1#43-geometry-encoding
 commands :: Seq Word32 -> Either Text (Seq Command)
-commands Seq.Empty = Right Seq.Empty
-commands (n :<| ns) = parseCmd n >>= f
-  where f (1,count) = do
-          let (ls,rs) = Seq.splitAt (count * 2) ns
-          mts <- MoveTo . fmap (both unzig) <$> pairs' ls
-          (mts <|) <$> commands rs
-        f (2,count) = do
-          let (ls,rs) = Seq.splitAt (count * 2) ns
-          mts <- LineTo . fmap (both unzig) <$> pairs' ls
-          (mts <|) <$> commands rs
-        f (7,_) = (ClosePath <|) <$> commands ns
-        f _ = Left "Sentinel: You should never see this."
-
--- TODO Get Either out of the recursion and make this tail recursive.
+commands = go (Right Seq.Empty)
+  where go !acc Seq.Empty = acc
+        go !(Left e) _ = Left e
+        go !acc (n :<| ns) = parseCmd n >>= \case
+          (1, count) -> do
+            let (ls,rs) = Seq.splitAt (count * 2) ns
+            mts <- MoveTo . fmap (both unzig) <$> pairs' ls
+            go ((|> mts) <$> acc) rs
+          (2, count) -> do
+            let (ls,rs) = Seq.splitAt (count * 2) ns
+            mts <- LineTo . fmap (both unzig) <$> pairs' ls
+            go ((|> mts) <$> acc) rs
+          (7, _) -> go ((|> ClosePath) <$> acc) ns
+          _ -> Left "Sentinel: You should never see this."
 
 -- | Convert a list of parsed `Command`s back into their original Command
 -- and Z-encoded Parameter integer forms.
