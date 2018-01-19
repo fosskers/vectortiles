@@ -51,8 +51,12 @@ import           Geography.VectorTile.Geometry
 type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
 
 -- | A high-level representation of a Vector Tile. Implemented internally
--- as a `M.Map`, so that access to individual layers can be fast if you
+-- as a `M.HashMap`, so that access to individual layers can be fast if you
 -- know the layer names ahead of time.
+--
+-- The layer name itself, a lazy `BL.ByteString`, is guaranteed to be UTF-8.
+-- If you wish to convert it to `Data.Text.Lazy.Text`, consider
+-- `Data.Text.Lazy.Encoding.decodeUtf8`.
 newtype VectorTile = VectorTile { _layers :: M.HashMap BL.ByteString Layer } deriving (Eq,Show,Generic)
 
 layers :: Lens' VectorTile (M.HashMap BL.ByteString Layer)
@@ -111,6 +115,9 @@ instance NFData Layer
 --
 -- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
 -- the same thing, as a `V.Vector` of that `Geometry`.
+--
+-- Note: The keys to the metadata are `BL.ByteString`, but are guaranteed
+-- to be UTF-8.
 data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
                          , _metadata :: M.HashMap BL.ByteString Val
                          , _geometries :: Seq.Seq g } deriving (Eq,Show,Generic)
@@ -130,7 +137,7 @@ geometries f l = (\v -> l { _geometries = v }) <$> f (_geometries l)
 instance NFData g => NFData (Feature g)
 
 -- | Legal Metadata /Value/ types. Note that `S64` are Z-encoded automatically
--- by the underlying "Data.ProtocolBuffers" library.
+-- by the underlying "Text.ProtocolBuffers" library.
 data Val = St BL.ByteString | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
          deriving (Eq,Ord,Show,Generic,Hashable)
 
