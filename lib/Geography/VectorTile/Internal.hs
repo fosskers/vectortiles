@@ -244,17 +244,17 @@ unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
 commands :: Seq Word32 -> Either Text (Seq Command)
 commands = go (Right Seq.Empty)
   where go !acc Seq.Empty = acc
-        go !(Left e) _ = Left e
-        go !acc (n :<| ns) = parseCmd n >>= \case
+        go (Left e) _ = Left e
+        go (Right !acc) (n :<| ns) = parseCmd n >>= \case
           (1, count) -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
             mts <- MoveTo . fmap (both unzig) <$> pairs' ls
-            go ((|> mts) <$> acc) rs
+            go (Right $ acc |> mts) rs
           (2, count) -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
             mts <- LineTo . fmap (both unzig) <$> pairs' ls
-            go ((|> mts) <$> acc) rs
-          (7, _) -> go ((|> ClosePath) <$> acc) ns
+            go (Right $ acc |> mts) rs
+          (7, _) -> go (Right $ acc |> ClosePath) ns
           _ -> Left "Sentinel: You should never see this."
 
 -- | Convert a list of parsed `Command`s back into their original Command
@@ -295,7 +295,7 @@ feats keys vals fs = foldlM g mempty fs
           <$> pure (maybe 0 fromIntegral $ Feature.id x)
           <*> getMeta keys vals (Feature.tags x)
           <*> (commands (Feature.geometry x) >>= fromCommands)
-        g !(pnt,lin,ply) fe = case Feature.type' fe of
+        g (!pnt,!lin,!ply) fe = case Feature.type' fe of
           Just GeomType.POINT      -> (\fe' -> (pnt |> fe', lin, ply)) <$> f fe
           Just GeomType.LINESTRING -> (\fe' -> (pnt, lin |> fe', ply)) <$> f fe
           Just GeomType.POLYGON    -> (\fe' -> (pnt, lin, ply |> fe')) <$> f fe
