@@ -1,16 +1,16 @@
 { mkDerivation, base, bytestring, containers, criterion, deepseq
-, hashable, hex, microlens, microlens-platform, parallel
-, protocol-buffers, protocol-buffers-descriptor, stdenv, tasty
-, tasty-hunit, text, transformers, unordered-containers, vector
+, hashable, hex, microlens, microlens-platform, protocol-buffers
+, protocol-buffers-descriptor, stdenv, tasty, tasty-hunit, text
+, transformers, unordered-containers, vector
 }:
 mkDerivation {
   pname = "vectortiles";
   version = "1.3.0";
   src = ./.;
   libraryHaskellDepends = [
-    base bytestring containers deepseq hashable parallel
-    protocol-buffers protocol-buffers-descriptor text transformers
-    unordered-containers vector
+    base bytestring containers deepseq hashable protocol-buffers
+    protocol-buffers-descriptor text transformers unordered-containers
+    vector
   ];
   testHaskellDepends = [
     base bytestring containers hashable hex protocol-buffers
