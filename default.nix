@@ -1,24 +1,26 @@
-{ mkDerivation, base, bytestring, cereal, containers, criterion
-, deepseq, hex, microlens, microlens-platform, protocol-buffers
+{ mkDerivation, base, bytestring, containers, criterion, deepseq
+, hashable, hex, microlens, microlens-platform, protocol-buffers
 , protocol-buffers-descriptor, stdenv, tasty, tasty-hunit, text
-, transformers, vector
+, transformers, unordered-containers, vector
 }:
 mkDerivation {
   pname = "vectortiles";
   version = "1.3.0";
   src = ./.;
   libraryHaskellDepends = [
-    base bytestring cereal containers deepseq protocol-buffers
-    protocol-buffers-descriptor text transformers vector
+    base bytestring containers deepseq hashable protocol-buffers
+    protocol-buffers-descriptor text transformers unordered-containers
+    vector
   ];
   testHaskellDepends = [
-    base bytestring cereal containers hex protocol-buffers
-    protocol-buffers-descriptor tasty tasty-hunit text vector
+    base bytestring containers hashable hex protocol-buffers
+    protocol-buffers-descriptor tasty tasty-hunit text
+    unordered-containers vector
   ];
   benchmarkHaskellDepends = [
-    base bytestring cereal containers criterion microlens
+    base bytestring containers criterion hashable microlens
     microlens-platform protocol-buffers protocol-buffers-descriptor
-    text vector
+    text unordered-containers vector
   ];
   homepage = "https://github.com/fosskers/vectortiles";
   description = "GIS Vector Tiles, as defined by Mapbox";

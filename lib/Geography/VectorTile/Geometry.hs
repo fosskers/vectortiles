@@ -10,7 +10,7 @@
 module Geography.VectorTile.Geometry
   ( -- * Geometries
     -- ** Types
-    Point, x, y
+    Point, pattern Point, x, y
   , LineString(..)
   , Polygon(..)
   -- ** Operations
@@ -20,7 +20,8 @@ module Geography.VectorTile.Geometry
   ) where
 
 import           Control.DeepSeq (NFData)
-import qualified Data.Vector as V
+import           Data.Foldable (foldl')
+import qualified Data.Sequence as Seq
 import qualified Data.Vector.Unboxed as U
 import           GHC.Generics (Generic)
 
@@ -40,15 +41,19 @@ newtype LineString = LineString { lsPoints :: U.Vector Point } deriving (Eq,Show
 instance NFData LineString
 
 -- | A polygon aware of its interior rings.
+--
+-- VectorTiles require that Polygon exteriors have clockwise winding order,
+-- and that interior holes have counter-clockwise winding order.
+-- These assume that the origin (0,0) is in the *top-left* corner.
 data Polygon = Polygon { polyPoints :: U.Vector Point
-                       , inner :: V.Vector Polygon } deriving (Eq,Show,Generic)
+                       , inner :: Seq.Seq Polygon } deriving (Eq,Show,Generic)
 
 instance NFData Polygon
 
 -- | The area of a `Polygon` is the difference between the areas of its
 -- outer ring and inner rings.
 area :: Polygon -> Double
-area p = surveyor (polyPoints p) + sum (V.map area $ inner p)
+area p = surveyor (polyPoints p) + foldl' (\acc i -> acc + area i) 0 (inner p)
 
 -- | The surveyor's formula for calculating the area of a `Polygon`.
 -- If the value reported here is negative, then the `Polygon` should be

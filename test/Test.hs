@@ -9,6 +9,7 @@ module Main where
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Sequence as Seq
+import qualified Data.Text as T
 import qualified Data.Vector.Unboxed as U
 import           Geography.VectorTile
 import qualified Geography.VectorTile.Internal as I
@@ -50,7 +51,10 @@ suite op ls pl rd cl = testGroup "Unit Tests"
       ]
     ]
   , testGroup "Geometries"
-    [ testCase "Z-encoding Isomorphism" zencoding
+    [ testCase "area" $ area poly @?= 1
+    , testCase "surveyor - outer" . assert $ surveyor (polyPoints poly) > 0
+    , testCase "surveyor - inner" . assert $ surveyor (U.reverse $ polyPoints poly) < 0
+    , testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
     , testCase "[Word32] <-> [Command]" commandIso
     , testCase "[Word32] <-> V.Vector Point" pointIso
@@ -87,16 +91,18 @@ fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
 
 encodeIso :: I.Tile -> Assertion
-encodeIso vt = assert . isRight . fmap I.toProtobuf $ I.fromProtobuf vt
+encodeIso vt = case I.fromProtobuf vt of
+                 Left e  -> assertFailure $ T.unpack e
+                 Right t -> I.toProtobuf t @?= vt
 
 testTile :: I.Tile
 testTile = I.Tile (Seq.singleton l) defaultValue
-  where l = defaultValue { I.version   = 2
-                         , I.name      = Utf8 "testlayer"
-                         , I.features  = Seq.singleton f
-                         , I.keys      = Seq.singleton $ Utf8 "somekey"
-                         , I.values    = Seq.singleton v
-                         , I.extent    = Just 4096 }
+  where l = defaultValue { I.version  = 2
+                         , I.name     = Utf8 "testlayer"
+                         , I.features = Seq.singleton f
+                         , I.keys     = Seq.singleton $ Utf8 "somekey"
+                         , I.values   = Seq.singleton v
+                         , I.extent   = Just 4096 }
         f = I.Feature { I.id    = Just 0
                       , I.tags  = Seq.fromList [0,0]
                       , I.type' = Just I.POINT
@@ -152,40 +158,45 @@ zencoding = assert $ map (I.unzig . I.zig) vs @?= vs
   where vs = [0,(-1),1,(-2),2,(-3),3,2147483647,(-2147483648)]
 
 commandTest :: Assertion
-commandTest = assert $ I.commands [9,4,4,18,6,4,5,4,15] @?= Right
-  [ I.MoveTo $ U.singleton (2,2)
-  , I.LineTo $ U.fromList [(3,2),(-3,2)]
-  , I.ClosePath ]
+commandTest = assert $ I.commands (Seq.fromList [9,4,4,18,6,4,5,4,15]) @?= Right (
+  Seq.fromList [ I.MoveTo $ Seq.singleton (2,2)
+               , I.LineTo $ Seq.fromList [(3,2),(-3,2)]
+               , I.ClosePath ]
+  )
 
 commandIso :: Assertion
 commandIso = assert $ (I.uncommands . fromRight $ I.commands cs) @?= cs
-  where cs = [9,4,4,18,6,4,5,4,15]
+  where cs = Seq.fromList [9,4,4,18,6,4,5,4,15]
 
 pointIso :: Assertion
 pointIso = cs' @?= cs
-  where cs = [25,4,4,6,6,3,3]
+  where cs = Seq.fromList [25,4,4,6,6,3,3]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @Point)
 
 linestringIso :: Assertion
 linestringIso = cs' @?= cs
-  where cs = [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4]
+  where cs = Seq.fromList [9,4,4,18,6,4,5,4,9,4,4,18,6,4,5,4]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @LineString)
 
 -- | Two solids
 polygonIso :: Assertion
 polygonIso = cs' @?= cs
-  where cs = [9,4,4,18,6,4,5,4,15,9,4,4,18,6,4,5,4,15]
+  where cs = Seq.fromList [9,4,4,18,6,4,5,4,15,9,4,4,18,6,4,5,4,15]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @Polygon)
 
 -- | One holed
 polygonIso2 :: Assertion
 polygonIso2 = cs' @?= cs
-  where cs = [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15]
+  where cs = Seq.fromList [9,4,4,26,6,0,0,6,5,0,15,9,2,3,26,0,2,2,0,0,1,15]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @Polygon)
 
 -- | One Holed, one solid
 polygonIso3 :: Assertion
 polygonIso3 = cs' @?= cs
-  where cs = [ 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15, 9, 2, 3, 26, 0, 2, 2, 0, 0, 1, 15
+  where cs = Seq.fromList [ 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15, 9, 2, 3, 26, 0, 2, 2, 0, 0, 1, 15
              , 9, 4, 4, 26, 6, 0, 0, 6, 5, 0, 15 ]
         cs' = fromRight $ I.uncommands . I.toCommands <$> (I.commands cs >>= I.fromCommands @Polygon)
+
+poly :: Polygon
+poly = Polygon ps mempty
+  where ps = U.fromList [(0,0), (1,0), (1,1), (0,1), (0,0)]
