@@ -36,10 +36,10 @@ module Geography.VectorTile.VectorTile
   ) where
 
 import           Control.DeepSeq (NFData)
+import qualified Data.ByteString.Lazy as BL
 import           Data.Int
 import qualified Data.Map.Lazy as M
 import qualified Data.Sequence as Seq
-import           Data.Text (Text)
 import           Data.Word
 import           GHC.Generics (Generic)
 import           Geography.VectorTile.Geometry
@@ -52,9 +52,9 @@ type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
 -- | A high-level representation of a Vector Tile. Implemented internally
 -- as a `M.Map`, so that access to individual layers can be fast if you
 -- know the layer names ahead of time.
-newtype VectorTile = VectorTile { _layers :: M.Map Text Layer } deriving (Eq,Show,Generic)
+newtype VectorTile = VectorTile { _layers :: M.Map BL.ByteString Layer } deriving (Eq,Show,Generic)
 
-layers :: Lens' VectorTile (M.Map Text Layer)
+layers :: Lens' VectorTile (M.Map BL.ByteString Layer)
 layers f v = VectorTile <$> f (_layers v)
 {-# INLINE layers #-}
 
@@ -64,7 +64,7 @@ instance NFData VectorTile
 -- This codec only respects the canonical three `Geometry` types, and we split
 -- them here explicitely to allow for more fine-grained access to each type.
 data Layer = Layer { _version     :: Word  -- ^ The version of the spec we follow. Should always be 2.
-                   , _name        :: Text
+                   , _name        :: BL.ByteString
                    , _points      :: Seq.Seq (Feature Point)
                    , _linestrings :: Seq.Seq (Feature LineString)
                    , _polygons    :: Seq.Seq (Feature Polygon)
@@ -75,7 +75,7 @@ version :: Lens' Layer Word
 version f l = (\v -> l { _version = v }) <$> f (_version l)
 {-# INLINE version #-}
 
-name :: Lens' Layer Text
+name :: Lens' Layer BL.ByteString
 name f l = (\v -> l { _name = v }) <$> f (_name l)
 {-# INLINE name #-}
 
@@ -111,14 +111,14 @@ instance NFData Layer
 -- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
 -- the same thing, as a `V.Vector` of that `Geometry`.
 data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
-                         , _metadata :: M.Map Text Val
+                         , _metadata :: M.Map BL.ByteString Val
                          , _geometries :: Seq.Seq g } deriving (Eq,Show,Generic)
 
 featureId :: Lens' (Feature g) Word
 featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
 {-# INLINE featureId #-}
 
-metadata :: Lens' (Feature g) (M.Map Text Val)
+metadata :: Lens' (Feature g) (M.Map BL.ByteString Val)
 metadata f l = (\v -> l { _metadata = v }) <$> f (_metadata l)
 {-# INLINE metadata #-}
 
@@ -130,7 +130,7 @@ instance NFData g => NFData (Feature g)
 
 -- | Legal Metadata /Value/ types. Note that `S64` are Z-encoded automatically
 -- by the underlying "Data.ProtocolBuffers" library.
-data Val = St Text | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
+data Val = St BL.ByteString | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
          deriving (Eq,Ord,Show,Generic)
 
 instance NFData Val

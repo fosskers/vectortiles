@@ -6,8 +6,8 @@ module Main where
 
 import           Criterion.Main
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map.Lazy as M
-import           Data.Text (Text)
 import           Geography.VectorTile
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
@@ -56,10 +56,10 @@ decodes bs = [ bench "VectorTile" $ nf tile bs ]
 encodes :: VectorTile -> [Benchmark]
 encodes vt = [ bench "ByteString" $ nf untile vt ]
 
-layerNames :: BS.ByteString -> [Text]
+layerNames :: BS.ByteString -> [BL.ByteString]
 layerNames = M.keys . _layers . fromRight . tile
 
-firstPoly :: Text -> BS.ByteString -> Maybe Polygon
+firstPoly :: BL.ByteString -> BS.ByteString -> Maybe Polygon
 firstPoly ln mvt = tile mvt ^? _Right . layers . ix ln . polygons . _head . geometries . _head
 
 fromRight :: Either a b -> b

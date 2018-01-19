@@ -52,6 +52,7 @@ module Geography.VectorTile.Internal
 import           Control.Applicative ((<|>))
 import           Control.Monad.Trans.State.Strict
 import           Data.Bits
+import qualified Data.ByteString.Lazy as BL
 import           Data.Foldable (fold, foldl', foldrM, foldlM, toList)
 import           Data.Int
 import qualified Data.Map.Lazy as M
@@ -61,8 +62,6 @@ import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq, (<|), (|>), Seq((:<|)))
 import qualified Data.Set as S
 import           Data.Text (Text, pack)
-import           Data.Text.Lazy (toStrict, fromStrict)
-import           Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
 import qualified Geography.VectorTile.Geometry as G
@@ -101,18 +100,18 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- feats (toStrict . decodeUtf8 . utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
+    (ps,ls,polys) <- feats (utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
-                  , VT._name = toStrict . decodeUtf8 . utf8 $ Layer.name l
+                  , VT._name = utf8 $ Layer.name l
                   , VT._points = ps
                   , VT._linestrings = ls
                   , VT._polygons = polys
                   , VT._extent = maybe 4096 fromIntegral (Layer.extent l) }
 
   toProtobuf l = Layer.Layer { Layer.version   = fromIntegral $ VT._version l
-                             , Layer.name      = Utf8 . encodeUtf8 . fromStrict $ VT._name l
+                             , Layer.name      = Utf8 $ VT._name l
                              , Layer.features  = fs
-                             , Layer.keys      = Seq.fromList $ map (Utf8 . encodeUtf8 . fromStrict) ks
+                             , Layer.keys      = Seq.fromList $ map Utf8 ks
                              , Layer.values    = Seq.fromList $ map toProtobuf vs
                              , Layer.extent    = Just . fromIntegral $ VT._extent l
                              , Layer.ext'field = defaultValue }
@@ -124,7 +123,7 @@ instance Protobuffable VT.Layer where
 
 instance Protobuffable VT.Val where
   fromProtobuf v = mtoe "Value decode: No legal Value type offered" $
-        fmap (VT.St . toStrict . decodeUtf8 . utf8) (Value.string_value v)
+        fmap (VT.St . utf8) (Value.string_value v)
     <|> fmap VT.Fl  (Value.float_value v)
     <|> fmap VT.Do  (Value.double_value v)
     <|> fmap VT.I64 (Value.int_value v)
@@ -132,7 +131,7 @@ instance Protobuffable VT.Val where
     <|> fmap VT.S64 (Value.sint_value v)
     <|> fmap VT.B   (Value.bool_value v)
 
-  toProtobuf (VT.St v)  = defaultValue { Value.string_value = Just . Utf8 . encodeUtf8 $ fromStrict v }
+  toProtobuf (VT.St v)  = defaultValue { Value.string_value = Just $ Utf8 v }
   toProtobuf (VT.Fl v)  = defaultValue { Value.float_value  = Just v }
   toProtobuf (VT.Do v)  = defaultValue { Value.double_value = Just v }
   toProtobuf (VT.I64 v) = defaultValue { Value.int_value    = Just v }
@@ -287,7 +286,7 @@ uncommands = (>>= f)
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-feats :: Seq Text -> Seq Value.Value -> Seq Feature.Feature
+feats :: Seq BL.ByteString -> Seq Value.Value -> Seq Feature.Feature
   -> Either Text (Seq (VT.Feature G.Point), Seq (VT.Feature G.LineString), Seq (VT.Feature G.Polygon))
 feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
 feats keys vals fs = foldlM g mempty fs
@@ -302,14 +301,14 @@ feats keys vals fs = foldlM g mempty fs
           Just GeomType.POLYGON    -> (\fe' -> (pnt, lin, ply |> fe')) <$> f fe
           _ -> Left "Geometry type of UNKNOWN given."
 
-getMeta :: Seq Text -> Seq Value.Value -> Seq Word32 -> Either Text (M.Map Text VT.Val)
+getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.Map BL.ByteString VT.Val)
 getMeta keys vals tags = do
   kv <- fmap (both fromIntegral) <$> pairs' tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
 
-totalMeta :: Seq (VT.Feature G.Point) -> Seq (VT.Feature G.LineString) -> Seq (VT.Feature G.Polygon) -> ([Text], [VT.Val])
+totalMeta :: Seq (VT.Feature G.Point) -> Seq (VT.Feature G.LineString) -> Seq (VT.Feature G.Polygon) -> ([BL.ByteString], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
   where keys = S.toList $ f ps <> f ls <> f polys
         vals = S.toList $ g ps <> g ls <> g polys
@@ -317,7 +316,7 @@ totalMeta ps ls polys = (keys, vals)
         g = foldMap (S.fromList . M.elems . VT._metadata)
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeats :: ProtobufGeom g => M.Map Text Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
+unfeats :: ProtobufGeom g => M.Map BL.ByteString Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
 unfeats keys vals gt fe = Feature.Feature
                             { Feature.id       = Just . fromIntegral $ VT._featureId fe
                             , Feature.tags     = Seq.fromList $ tags fe
