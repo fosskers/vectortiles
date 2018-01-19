@@ -38,9 +38,11 @@ dependencies:
   - base >=4.9 && <4.11
   - bytestring
   - containers
+  - hashable
   - protocol-buffers >= 2.4 && < 2.5
   - protocol-buffers-descriptor >= 2.4 && < 2.5
   - text >=1.2 && <1.3
+  - unordered-containers
   - vector >=0.11 && <0.13
 
 library:

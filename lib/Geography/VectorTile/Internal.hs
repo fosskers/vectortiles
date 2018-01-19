@@ -55,12 +55,12 @@ import           Data.Bits
 import qualified Data.ByteString.Lazy as BL
 import           Data.Foldable (fold, foldl', foldrM, foldlM, toList)
 import           Data.Int
-import qualified Data.Map.Lazy as M
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as HS
 import           Data.Maybe (fromJust)
 import           Data.Monoid
 import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq, (<|), (|>), Seq((:<|)))
-import qualified Data.Set as S
 import           Data.Text (Text, pack)
 import qualified Data.Vector.Unboxed as U
 import           Data.Word
@@ -301,7 +301,7 @@ feats keys vals fs = foldlM g mempty fs
           Just GeomType.POLYGON    -> (\fe' -> (pnt, lin, ply |> fe')) <$> f fe
           _ -> Left "Geometry type of UNKNOWN given."
 
-getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.Map BL.ByteString VT.Val)
+getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
   kv <- fmap (both fromIntegral) <$> pairs' tags
   foldrM (\(k,v) acc -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
@@ -310,13 +310,13 @@ getMeta keys vals tags = do
 
 totalMeta :: Seq (VT.Feature G.Point) -> Seq (VT.Feature G.LineString) -> Seq (VT.Feature G.Polygon) -> ([BL.ByteString], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
-  where keys = S.toList $ f ps <> f ls <> f polys
-        vals = S.toList $ g ps <> g ls <> g polys
-        f = foldMap (M.keysSet . VT._metadata)
-        g = foldMap (S.fromList . M.elems . VT._metadata)
+  where keys = HS.toList $ f ps <> f ls <> f polys
+        vals = HS.toList $ g ps <> g ls <> g polys
+        f = foldMap (HS.fromMap . fmap (const ()) . VT._metadata)
+        g = foldMap (HS.fromList . M.elems . VT._metadata)
 
 -- | Encode a high-level `Feature` back into its mid-level `RawFeature` form.
-unfeats :: ProtobufGeom g => M.Map BL.ByteString Int -> M.Map VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
+unfeats :: ProtobufGeom g => M.HashMap BL.ByteString Int -> M.HashMap VT.Val Int -> GeomType.GeomType -> VT.Feature g -> Feature.Feature
 unfeats keys vals gt fe = Feature.Feature
                             { Feature.id       = Just . fromIntegral $ VT._featureId fe
                             , Feature.tags     = Seq.fromList $ tags fe

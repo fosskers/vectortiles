@@ -7,7 +7,7 @@ module Main where
 import           Criterion.Main
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map.Lazy as M
+import qualified Data.HashMap.Lazy as M
 import           Geography.VectorTile
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.

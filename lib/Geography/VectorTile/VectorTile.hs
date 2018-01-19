@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 {-# LANGUAGE Rank2Types #-}
 
 -- |
@@ -37,8 +37,9 @@ module Geography.VectorTile.VectorTile
 
 import           Control.DeepSeq (NFData)
 import qualified Data.ByteString.Lazy as BL
+import           Data.Hashable (Hashable)
 import           Data.Int
-import qualified Data.Map.Lazy as M
+import qualified Data.HashMap.Lazy as M
 import qualified Data.Sequence as Seq
 import           Data.Word
 import           GHC.Generics (Generic)
@@ -52,9 +53,9 @@ type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
 -- | A high-level representation of a Vector Tile. Implemented internally
 -- as a `M.Map`, so that access to individual layers can be fast if you
 -- know the layer names ahead of time.
-newtype VectorTile = VectorTile { _layers :: M.Map BL.ByteString Layer } deriving (Eq,Show,Generic)
+newtype VectorTile = VectorTile { _layers :: M.HashMap BL.ByteString Layer } deriving (Eq,Show,Generic)
 
-layers :: Lens' VectorTile (M.Map BL.ByteString Layer)
+layers :: Lens' VectorTile (M.HashMap BL.ByteString Layer)
 layers f v = VectorTile <$> f (_layers v)
 {-# INLINE layers #-}
 
@@ -111,14 +112,14 @@ instance NFData Layer
 -- Note: Each `Geometry` type and their /Multi*/ counterpart are considered
 -- the same thing, as a `V.Vector` of that `Geometry`.
 data Feature g = Feature { _featureId :: Word  -- ^ Default: 0
-                         , _metadata :: M.Map BL.ByteString Val
+                         , _metadata :: M.HashMap BL.ByteString Val
                          , _geometries :: Seq.Seq g } deriving (Eq,Show,Generic)
 
 featureId :: Lens' (Feature g) Word
 featureId f l = (\v -> l { _featureId = v }) <$> f (_featureId l)
 {-# INLINE featureId #-}
 
-metadata :: Lens' (Feature g) (M.Map BL.ByteString Val)
+metadata :: Lens' (Feature g) (M.HashMap BL.ByteString Val)
 metadata f l = (\v -> l { _metadata = v }) <$> f (_metadata l)
 {-# INLINE metadata #-}
 
@@ -131,6 +132,6 @@ instance NFData g => NFData (Feature g)
 -- | Legal Metadata /Value/ types. Note that `S64` are Z-encoded automatically
 -- by the underlying "Data.ProtocolBuffers" library.
 data Val = St BL.ByteString | Fl Float | Do Double | I64 Int64 | W64 Word64 | S64 Int64 | B Bool
-         deriving (Eq,Ord,Show,Generic)
+         deriving (Eq,Ord,Show,Generic,Hashable)
 
 instance NFData Val
