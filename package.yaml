@@ -35,7 +35,7 @@ ghc-options:
   - -Wincomplete-uni-patterns
 
 dependencies:
-  - base >=4.9 && <4.11
+  - base >=4.9 && <4.12
   - bytestring
   - containers
   - hashable
