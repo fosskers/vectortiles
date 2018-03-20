@@ -52,8 +52,8 @@ suite op ls pl rd cl = testGroup "Unit Tests"
     ]
   , testGroup "Geometries"
     [ testCase "area" $ area poly @?= 1
-    , testCase "surveyor - outer" . assert $ surveyor (polyPoints poly) > 0
-    , testCase "surveyor - inner" . assert $ surveyor (U.reverse $ polyPoints poly) < 0
+    , testCase "surveyor - outer" . assertBool "surveyor outer" $ surveyor (polyPoints poly) > 0
+    , testCase "surveyor - inner" . assertBool "surveyor inner" $ surveyor (U.reverse $ polyPoints poly) < 0
     , testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
     , testCase "[Word32] <-> [Command]" commandIso
@@ -80,7 +80,7 @@ protobufDecode bs res = case messageGet $ BL.fromStrict bs of
                           Right (t, _) -> t @?= res
 
 tileDecode :: BS.ByteString -> Assertion
-tileDecode bs = assert . isRight $ tile bs
+tileDecode bs = assertBool "tileDecode" . isRight $ tile bs
 
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -154,18 +154,18 @@ onePolygon = I.Tile (Seq.singleton l) defaultValue
                       , I.geometry = Seq.fromList [9, 4, 4, 18, 6, 4, 5, 4, 15] }
 
 zencoding :: Assertion
-zencoding = assert $ map (I.unzig . I.zig) vs @?= vs
+zencoding = map (I.unzig . I.zig) vs @?= vs
   where vs = [0,(-1),1,(-2),2,(-3),3,2147483647,(-2147483648)]
 
 commandTest :: Assertion
-commandTest = assert $ I.commands (Seq.fromList [9,4,4,18,6,4,5,4,15]) @?= Right (
+commandTest = I.commands (Seq.fromList [9,4,4,18,6,4,5,4,15]) @?= Right (
   Seq.fromList [ I.MoveTo $ Seq.singleton (2,2)
                , I.LineTo $ Seq.fromList [(3,2),(-3,2)]
                , I.ClosePath ]
   )
 
 commandIso :: Assertion
-commandIso = assert $ (I.uncommands . fromRight $ I.commands cs) @?= cs
+commandIso = (I.uncommands . fromRight $ I.commands cs) @?= cs
   where cs = Seq.fromList [9,4,4,18,6,4,5,4,15]
 
 pointIso :: Assertion
