@@ -55,7 +55,7 @@ import           Control.Monad.Trans.State.Strict
 import           Data.Bits
 import qualified Data.ByteString.Lazy as BL
 import           Data.Foldable (fold, foldl', foldlM, toList)
-import qualified Data.HashMap.Lazy as M
+import qualified Data.HashMap.Strict as M
 import qualified Data.HashSet as HS
 import           Data.Int
 import           Data.Maybe (fromJust)
@@ -238,8 +238,8 @@ parseCmd n = case cmd of
         count = shift n (-3)
 
 -- | Recombine a Command ID and parameter count into a Command Integer.
-unparseCmd :: (Int,Int) -> Word32
-unparseCmd (cmd,count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
+unparseCmd :: Pair -> Word32
+unparseCmd (Pair cmd count) = fromIntegral $ (cmd .&. 7) .|. shift count 3
 {-# INLINE unparseCmd #-}
 
 -- | Attempt to parse a list of Command/Parameter integers, as defined here:
@@ -265,9 +265,9 @@ commands = go (Right Seq.Empty)
 -- and Z-encoded Parameter integer forms.
 uncommands :: Seq Command -> Seq Word32
 uncommands = (>>= f)
-  where f (MoveTo ps) = unparseCmd (1, length ps) <| params ps
-        f (LineTo ls) = unparseCmd (2, length ls) <| params ls
-        f ClosePath   = Seq.singleton $ unparseCmd (7,1)  -- ClosePath, Count 1.
+  where f (MoveTo ps) = unparseCmd (Pair 1 (length ps)) <| params ps
+        f (LineTo ls) = unparseCmd (Pair 2 (length ls)) <| params ls
+        f ClosePath   = Seq.singleton $ unparseCmd (Pair 7 1)  -- ClosePath, Count 1.
 
 {- FROM PROTOBUF -}
 
