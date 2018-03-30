@@ -47,7 +47,7 @@ module Geography.VectorTile
   , geometries
   , Val(..)
   -- * Geometries
-  , Point, x, y
+  , Point(..)
   , LineString(..)
   , Polygon(..)
   , area

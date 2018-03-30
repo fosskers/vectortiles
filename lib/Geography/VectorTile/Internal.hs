@@ -55,15 +55,15 @@ import           Control.Monad.Trans.State.Strict
 import           Data.Bits
 import qualified Data.ByteString.Lazy as BL
 import           Data.Foldable (fold, foldl', foldlM, toList)
-import           Data.Int
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as HS
+import           Data.Int
 import           Data.Maybe (fromJust)
 import           Data.Monoid
-import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq, (<|), (|>), Seq((:<|)))
+import qualified Data.Sequence as Seq
 import           Data.Text (Text, pack)
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector as V
 import           Data.Word
 import qualified Geography.VectorTile.Geometry as G
 import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile as Tile
@@ -149,31 +149,31 @@ class ProtobufGeom g where
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  fromCommands (MoveTo ps :<| Seq.Empty) = Right $ expand' (0, 0) ps
+  fromCommands (MoveTo ps :<| Seq.Empty) = Right $ expand' (G.Point 0 0) ps
   fromCommands (c :<| _) = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands Seq.Empty = Left "No points given!"
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
-  toCommands ps = Seq.singleton (MoveTo $ evalState (traverse collapse ps) (0,0))
+  toCommands ps = Seq.singleton (MoveTo $ evalState (traverse collapse ps) (G.Point 0 0))
 
 -- | A valid `RawFeature` of linestrings must contain pairs of:
 --
 -- A `MoveTo` with a count of 1, followed by one `LineTo` command with
 -- a count greater than 0.
 instance ProtobufGeom G.LineString where
-  fromCommands cs = evalState (f cs) (0,0)
+  fromCommands cs = evalState (f cs) (G.Point 0 0)
     where f (MoveTo (p :<| Seq.Empty) :<| LineTo ps :<| rs) = do
             curr <- get
-            let ls = G.LineString . expand curr . U.fromList . toList $ p <| ps
-            put . U.last $ G.lsPoints ls
+            let ls = G.LineString . expand curr . V.fromList . toList $ p <| ps
+            put . V.last $ G.lsPoints ls
             fmap (ls <|) <$> f rs
           f Seq.Empty = pure $ Right Seq.Empty
           f _ = pure $ Left "LineString decode: Invalid command sequence given."
 
-  toCommands ls = fold $ evalState (traverse f ls) (0,0)
+  toCommands ls = fold $ evalState (traverse f ls) (G.Point 0 0)
     where f (G.LineString ps) = do
-            l <- U.mapM collapse ps
-            pure $ MoveTo (Seq.singleton $ U.head l) <| LineTo (Seq.fromList . U.toList $ U.tail l) <| Seq.Empty
+            l <- V.mapM collapse ps
+            pure $ MoveTo (Seq.singleton $ V.head l) <| LineTo (Seq.fromList . V.toList $ V.tail l) <| Seq.Empty
 
 -- | A valid `RawFeature` of polygons must contain at least one sequence of:
 --
@@ -185,14 +185,14 @@ instance ProtobufGeom G.LineString where
 -- Performs no sanity checks for malformed Interior Rings.
 instance ProtobufGeom G.Polygon where
   fromCommands cs = do
-    h :<| t <- evalState (f cs) (0,0)
+    h :<| t <- evalState (f cs) (G.Point 0 0)
     let (ps',p') = runState (foldlM g Seq.Empty t) h
     pure $ ps' |> p'  -- Include the last Exterior Ring worked on.
     where f (MoveTo (p :<| Seq.Empty) :<| LineTo ps :<| ClosePath :<| rs) = do
             curr <- get
-            let ps' = expand curr . U.fromList . toList $ p <| ps  -- Conversion bottleneck?
-            put $ U.last ps'
-            fmap (G.Polygon (U.snoc ps' $ U.head ps') Seq.Empty <|) <$> f rs
+            let ps' = expand curr . V.fromList . toList $ p <| ps  -- Conversion bottleneck?
+            put $ V.last ps'
+            fmap (G.Polygon (V.snoc ps' $ V.head ps') Seq.Empty <|) <$> f rs
           f Seq.Empty = pure $ Right Seq.Empty
           f _  = pure . Left . pack $ printf "Polygon decode: Invalid command sequence given: %s" (show cs)
           g acc p | G.area p > 0 = do  -- New external rings.
@@ -203,16 +203,16 @@ instance ProtobufGeom G.Polygon where
                       modify (\s -> s { G.inner = G.inner s |> p })
                       pure acc
 
-  toCommands ps = fold $ evalState (traverse f ps) (0,0)
-    where f :: G.Polygon -> State (Int, Int) (Seq Command)
+  toCommands ps = fold $ evalState (traverse f ps) (G.Point 0 0)
+    where f :: G.Polygon -> State G.Point (Seq Command)
           f (G.Polygon p i) = do
-            l <- U.mapM collapse $ U.init p  -- Exclude the final point.
-            let cs = MoveTo (Seq.singleton $ U.head l) <| LineTo (Seq.fromList . U.toList $ U.tail l) <| ClosePath <| Seq.Empty
+            l <- V.mapM collapse $ V.init p  -- Exclude the final point.
+            let cs = MoveTo (Seq.singleton $ V.head l) <| LineTo (Seq.fromList . V.toList $ V.tail l) <| ClosePath <| Seq.Empty
             fold . (cs <|) <$> traverse f i
 
 -- | The possible commands, and the values they hold.
-data Command = MoveTo (Seq (Int,Int))
-             | LineTo (Seq (Int,Int))
+data Command = MoveTo (Seq G.Point)
+             | LineTo (Seq G.Point)
              | ClosePath deriving (Eq,Show)
 
 -- | Z-encode a 64-bit Int.
@@ -227,13 +227,13 @@ unzig n = fromIntegral (fromIntegral unzigged :: Int32)
 {-# INLINE unzig #-}
 
 -- | Divide a "Command Integer" into its @(Command,Count)@.
-parseCmd :: Word32 -> Either Text (Int,Int)
-parseCmd n = case (cmd,count) of
-  (1,m) -> Right (1, fromIntegral m)
-  (2,m) -> Right (2, fromIntegral m)
-  (7,1) -> Right (7,1)
-  (7,m) -> Left $ "ClosePath was given a parameter count: " <> pack (show m)
-  (m,_) -> Left . pack $ printf "Invalid command integer %d found in: %X" m n
+parseCmd :: Word32 -> Either Text Pair
+parseCmd n = case cmd of
+  1 -> Right (Pair 1 (fromIntegral count))
+  2 -> Right (Pair 2 (fromIntegral count))
+  7 | count == 1 -> Right (Pair 7 1)
+    | otherwise  -> Left $ "ClosePath was given a parameter count: " <> pack (show count)
+  m -> Left . pack $ printf "Invalid command integer %d found in: %X" m n
   where cmd = n .&. 7
         count = shift n (-3)
 
@@ -250,15 +250,15 @@ commands = go (Right Seq.Empty)
   where go !acc Seq.Empty = acc
         go (Left e) _ = Left e
         go (Right !acc) (n :<| ns) = parseCmd n >>= \case
-          (1, count) -> do
+          Pair 1 count -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
             mts <- MoveTo <$> pairsWith unzig ls
             go (Right $ acc |> mts) rs
-          (2, count) -> do
+          Pair 2 count -> do
             let (ls,rs) = Seq.splitAt (count * 2) ns
             mts <- LineTo <$> pairsWith unzig ls
             go (Right $ acc |> mts) rs
-          (7, _) -> go (Right $ acc |> ClosePath) ns
+          Pair 7 _ -> go (Right $ acc |> ClosePath) ns
           _ -> Left "Sentinel: You should never see this."
 
 -- | Convert a list of parsed `Command`s back into their original Command
@@ -308,7 +308,7 @@ feats keys vals fs = foldlM g mempty fs
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
   kv <- pairsWith fromIntegral tags
-  foldlM (\acc (k,v) -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
+  foldlM (\acc (G.Point k v) -> (\v' -> M.insert (keys `Seq.index` k) v' acc) <$> fromProtobuf (vals `Seq.index` v)) M.empty kv
 
 {- TO PROTOBUF -}
 
@@ -332,22 +332,23 @@ unfeats keys vals gt fe = Feature.Feature
 {- UTIL -}
 
 -- | Transform a `Seq` of `Point`s into one of Z-encoded Parameter ints.
-params :: Seq (Int,Int) -> Seq Word32
-params = foldl' (\acc (a,b) -> acc |> zig a |> zig b) Seq.Empty
+params :: Seq G.Point -> Seq Word32
+params = foldl' (\acc (G.Point a b) -> acc |> zig a |> zig b) Seq.Empty
 
 -- | Expand a pair of diffs from some reference point into that of a `Point` value.
-expand :: (Int, Int) -> U.Vector (Int, Int) -> U.Vector (Int, Int)
-expand = U.postscanl' (\(x, y) (dx, dy) -> (x + dx, y + dy))
+expand :: G.Point -> V.Vector G.Point -> V.Vector G.Point
+expand = V.postscanl' (\(G.Point x y) (G.Point dx dy) -> G.Point (x + dx) (y + dy))
 
-expand' :: (Int, Int) -> Seq (Int, Int) -> Seq (Int, Int)
-expand' curr s = Seq.drop 1 $ Seq.scanl (\(x, y) (dx, dy) -> (x + dx, y + dy)) curr s
+-- | `Seq` based version of the above.
+expand' :: G.Point -> Seq G.Point -> Seq G.Point
+expand' curr s = Seq.drop 1 $ Seq.scanl (\(G.Point x y) (G.Point dx dy) -> G.Point (x + dx) (y + dy)) curr s
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
 -- the previous point in the sequence. The reference point is moved
 -- to the `Point` given.
-collapse :: G.Point -> State (Int,Int) (Int,Int)
+collapse :: G.Point -> State G.Point G.Point
 collapse p = do
   curr <- get
-  let diff = (G.x p - G.x curr, G.y p - G.y curr)
+  let diff = G.Point (G.x p - G.x curr) (G.y p - G.y curr)
   put p
   pure diff

@@ -1,5 +1,3 @@
--- -*- dante-target: "vectortiles-bench"; -*-
-
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -7,7 +5,7 @@ module Main where
 import           Criterion.Main
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.HashMap.Lazy as M
+import qualified Data.HashMap.Strict as M
 import           Geography.VectorTile
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
@@ -25,23 +23,23 @@ main = do
       pl' = fromRight $ tile pl
       rd' = fromRight $ tile rd
   defaultMain [ bgroup "Decoding"
-                [ bgroup "onepoint.mvt" $ decodes op
+                [ bgroup "onepoint.mvt"   $ decodes op
                 , bgroup "linestring.mvt" $ decodes ls
-                , bgroup "polygon.mvt" $ decodes pl
-                , bgroup "roads.mvt" $ decodes rd
+                , bgroup "polygon.mvt"    $ decodes pl
+                , bgroup "roads.mvt"      $ decodes rd
                 ]
               , bgroup "Encoding"
-                [ bgroup "Point" $ encodes op'
+                [ bgroup "Point"      $ encodes op'
                 , bgroup "LineString" $ encodes ls'
-                , bgroup "Polygon" $ encodes pl'
-                , bgroup "Roads" $ encodes rd'
+                , bgroup "Polygon"    $ encodes pl'
+                , bgroup "Roads"      $ encodes rd'
                 ]
               , bgroup "Data Access"
                 [ bgroup "All Layer Names"
-                  [ bench "One Point" $ nf layerNames op
+                  [ bench "One Point"      $ nf layerNames op
                   , bench "One LineString" $ nf layerNames ls
-                  , bench "One Polygon" $ nf layerNames pl
-                  , bench "roads.mvt" $ nf layerNames rd
+                  , bench "One Polygon"    $ nf layerNames pl
+                  , bench "roads.mvt"      $ nf layerNames rd
                   ]
                 , bgroup "First Polygon"
                   [ bench "One Polygon" $ nf (firstPoly "OnePolygon") op

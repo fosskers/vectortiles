@@ -1,5 +1,3 @@
--- -*- dante-target: "vectortiles-test"; -*-
-
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
@@ -10,7 +8,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector as V
 import           Geography.VectorTile
 import qualified Geography.VectorTile.Internal as I
 import           Test.Tasty
@@ -53,7 +51,7 @@ suite op ls pl rd cl = testGroup "Unit Tests"
   , testGroup "Geometries"
     [ testCase "area" $ area poly @?= 1
     , testCase "surveyor - outer" . assertBool "surveyor outer" $ surveyor (polyPoints poly) > 0
-    , testCase "surveyor - inner" . assertBool "surveyor inner" $ surveyor (U.reverse $ polyPoints poly) < 0
+    , testCase "surveyor - inner" . assertBool "surveyor inner" $ surveyor (V.reverse $ polyPoints poly) < 0
     , testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
     , testCase "[Word32] <-> [Command]" commandIso
@@ -159,8 +157,8 @@ zencoding = map (I.unzig . I.zig) vs @?= vs
 
 commandTest :: Assertion
 commandTest = I.commands (Seq.fromList [9,4,4,18,6,4,5,4,15]) @?= Right (
-  Seq.fromList [ I.MoveTo $ Seq.singleton (2,2)
-               , I.LineTo $ Seq.fromList [(3,2),(-3,2)]
+  Seq.fromList [ I.MoveTo $ Seq.singleton (Point 2 2)
+               , I.LineTo $ Seq.fromList [ Point 3 2, Point (-3) 2 ]
                , I.ClosePath ]
   )
 
@@ -199,4 +197,4 @@ polygonIso3 = cs' @?= cs
 
 poly :: Polygon
 poly = Polygon ps mempty
-  where ps = U.fromList [(0,0), (1,0), (1,1), (0,1), (0,0)]
+  where ps = V.fromList [(Point 0 0), (Point 1 0), (Point 1 1), (Point 0 1), (Point 0 0)]
