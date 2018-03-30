@@ -101,7 +101,7 @@ instance Protobuffable VT.VectorTile where
 
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
-    (ps,ls,polys) <- feats (utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
+    Feats ps ls polys <- feats (utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
     pure VT.Layer { VT._version = fromIntegral $ Layer.version l
                   , VT._name = utf8 $ Layer.name l
                   , VT._points = ps
@@ -290,20 +290,23 @@ uncommands = (>>= f)
 -- > feature :: ProtobufGeom g => RawFeature -> Either Text (Feature g)
 --
 -- is not possible.
-feats :: Seq BL.ByteString -> Seq Value.Value -> Seq Feature.Feature
-  -> Either Text (Seq (VT.Feature G.Point), Seq (VT.Feature G.LineString), Seq (VT.Feature G.Polygon))
+feats :: Seq BL.ByteString -> Seq Value.Value -> Seq Feature.Feature -> Either Text Feats
 feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
-feats keys vals fs = foldlM g mempty fs
+feats keys vals fs = foldlM g (Feats mempty mempty mempty) fs
   where f :: ProtobufGeom g => Feature.Feature -> Either Text (VT.Feature g)
         f x = VT.Feature
           <$> pure (maybe 0 fromIntegral $ Feature.id x)
           <*> getMeta keys vals (Feature.tags x)
           <*> (commands (Feature.geometry x) >>= fromCommands)
-        g (!pnt,!lin,!ply) fe = case Feature.type' fe of
-          Just GeomType.POINT      -> (\fe' -> (pnt |> fe', lin, ply)) <$> f fe
-          Just GeomType.LINESTRING -> (\fe' -> (pnt, lin |> fe', ply)) <$> f fe
-          Just GeomType.POLYGON    -> (\fe' -> (pnt, lin, ply |> fe')) <$> f fe
+        g !feets@(Feats ps ls po) fe = case Feature.type' fe of
+          Just GeomType.POINT      -> (\fe' -> feets { featPoints = ps |> fe' }) <$> f fe
+          Just GeomType.LINESTRING -> (\fe' -> feets { featLines  = ls |> fe' }) <$> f fe
+          Just GeomType.POLYGON    -> (\fe' -> feets { featPolys  = po |> fe' }) <$> f fe
           _ -> Left "Geometry type of UNKNOWN given."
+
+data Feats = Feats { featPoints :: !(Seq (VT.Feature G.Point))
+                   , featLines  :: !(Seq (VT.Feature G.LineString))
+                   , featPolys  :: !(Seq (VT.Feature G.Polygon)) }
 
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
