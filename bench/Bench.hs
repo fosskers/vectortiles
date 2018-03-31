@@ -6,6 +6,8 @@ import           Criterion.Main
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as M
+import           Data.Monoid ((<>))
+import qualified Data.Vector as V
 import           Geography.VectorTile
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
@@ -22,31 +24,36 @@ main = do
       ls' = fromRight $ tile ls
       pl' = fromRight $ tile pl
       rd' = fromRight $ tile rd
-  defaultMain [ bgroup "Decoding"
-                [ bgroup "onepoint.mvt"   $ decodes op
-                , bgroup "linestring.mvt" $ decodes ls
-                , bgroup "polygon.mvt"    $ decodes pl
-                , bgroup "roads.mvt"      $ decodes rd
-                ]
-              , bgroup "Encoding"
-                [ bgroup "Point"      $ encodes op'
-                , bgroup "LineString" $ encodes ls'
-                , bgroup "Polygon"    $ encodes pl'
-                , bgroup "Roads"      $ encodes rd'
-                ]
-              , bgroup "Data Access"
-                [ bgroup "All Layer Names"
-                  [ bench "One Point"      $ nf layerNames op
-                  , bench "One LineString" $ nf layerNames ls
-                  , bench "One Polygon"    $ nf layerNames pl
-                  , bench "roads.mvt"      $ nf layerNames rd
-                  ]
-                , bgroup "First Polygon"
-                  [ bench "One Polygon" $ nf (firstPoly "OnePolygon") op
-                  , bench "roads.mvt - water layer" $ nf (firstPoly "water") rd
-                  ]
-                ]
-              ]
+  defaultMain
+    [ bgroup "Decoding"
+      [ bgroup "onepoint.mvt"   $ decodes op
+      , bgroup "linestring.mvt" $ decodes ls
+      , bgroup "polygon.mvt"    $ decodes pl
+      , bgroup "roads.mvt"      $ decodes rd
+      ]
+    , bgroup "Encoding"
+      [ bgroup "Point"      $ encodes op'
+      , bgroup "LineString" $ encodes ls'
+      , bgroup "Polygon"    $ encodes pl'
+      , bgroup "Roads"      $ encodes rd'
+      ]
+    , bgroup "Data Access"
+      [ bgroup "All Layer Names"
+        [ bench "One Point"      $ nf layerNames op
+        , bench "One LineString" $ nf layerNames ls
+        , bench "One Polygon"    $ nf layerNames pl
+        , bench "roads.mvt"      $ nf layerNames rd
+        ]
+      , bgroup "First Polygon"
+        [ bench "One Polygon" $ nf (firstPoly "OnePolygon") op
+        , bench "roads.mvt - water layer" $ nf (firstPoly "water") rd
+        ]
+      ]
+    , bgroup "Other Functions"
+      [ bench "Surveyor - Tiny" $ nf surveyor tinyvec
+      , bench "Surveyor - Big"  $ nf surveyor bigvec
+      ]
+    ]
 
 decodes :: BS.ByteString -> [Benchmark]
 decodes bs = [ bench "VectorTile" $ nf tile bs ]
@@ -63,3 +70,10 @@ firstPoly ln mvt = tile mvt ^? _Right . layers . ix ln . polygons . _head . geom
 fromRight :: Either a b -> b
 fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
+
+tinyvec :: V.Vector Point
+tinyvec = V.fromList [ Point 1 1, Point 2 1, Point 2 2, Point 1 2, Point 1 1 ]
+
+bigvec :: V.Vector Point
+bigvec = ps <> V.fromList [ Point 500 1000, Point 1 1 ]
+  where ps = V.fromList $ map (\n -> Point n 1) [ 1 .. 1000 ]

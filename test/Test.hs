@@ -54,6 +54,7 @@ suite op ls pl rd cl = testGroup "Unit Tests"
     , testCase "surveyor - inner" . assertBool "surveyor inner" $ surveyor (V.reverse $ polyPoints poly) < 0
     , testCase "Z-encoding Isomorphism" zencoding
     , testCase "Command Parsing" commandTest
+    , testCase "Polygon Validity" $ V.head (polyPoints poly) @?= V.last (polyPoints poly)
     , testCase "[Word32] <-> [Command]" commandIso
     , testCase "[Word32] <-> V.Vector Point" pointIso
     , testCase "[Word32] <-> V.Vector LineString" linestringIso
