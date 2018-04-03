@@ -1,5 +1,5 @@
 name: vectortiles
-version: '1.3.0'
+version: '1.4.0'
 synopsis: GIS Vector Tiles, as defined by Mapbox.
 description: ! 'GIS Vector Tiles, as defined by Mapbox.
 

@@ -1,9 +1,13 @@
 Changelog
 =========
 
+1.4.0
+------
+- **Breaking:** `Feature` is now explicit about what `Vector` type it holds
+- Performance improvements
+
 1.2.0.3
 -------
-
 - Performance improvements during metadata encoding.
 
 1.2.0.2
