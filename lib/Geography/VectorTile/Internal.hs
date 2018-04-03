@@ -61,7 +61,7 @@ import qualified Data.HashSet as HS
 import           Data.Int
 import           Data.List (unfoldr)
 import           Data.Maybe (fromJust)
-import           Data.Monoid
+import           Data.Semigroup hiding (diff)
 import           Data.Sequence (Seq, (<|), (|>), Seq())
 import qualified Data.Sequence as Seq
 import           Data.Text (Text, pack)
@@ -149,7 +149,7 @@ instance Protobuffable VT.Val where
 -- to convert between an encodable list of `Command`s.
 class ProtobufGeom g where
   fromCommands :: [Command] -> Either Text (V.Vector g)
-  toCommands :: V.Vector g -> [Command]
+  toCommands   :: V.Vector g -> [Command]
 
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
@@ -353,7 +353,7 @@ params = VS.foldl' (\acc (G.Point a b) -> acc |> zig a |> zig b) Seq.Empty
 
 -- | Expand a pair of diffs from some reference point into that of a `Point` value.
 expand :: G.Point -> VS.Vector G.Point -> VS.Vector G.Point
-expand = VS.postscanl' (\(G.Point x y) (G.Point dx dy) -> G.Point (x + dx) (y + dy))
+expand = VS.postscanl' (<>)
 
 -- | Collapse a given `Point` into a pair of diffs, relative to
 -- the previous point in the sequence. The reference point is moved
