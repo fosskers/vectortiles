@@ -90,6 +90,11 @@ type instance Protobuf VT.VectorTile = Tile.Tile
 type instance Protobuf VT.Layer = Layer.Layer
 type instance Protobuf VT.Val = Value.Value
 
+type family GeomVec g = v | v -> g
+type instance GeomVec G.Point      = VS.Vector G.Point
+type instance GeomVec G.LineString = V.Vector G.LineString
+type instance GeomVec G.Polygon    = V.Vector G.Polygon
+
 -- | A type which can be converted to and from an underlying Protobuf type,
 -- according to the `Protobuf` type family.
 class Protobuffable a where
@@ -148,18 +153,18 @@ instance Protobuffable VT.Val where
 -- | Any classical type considered a GIS "geometry". These must be able
 -- to convert between an encodable list of `Command`s.
 class ProtobufGeom g where
-  fromCommands :: [Command] -> Either Text (V.Vector g)
-  toCommands   :: V.Vector g -> [Command]
+  fromCommands :: [Command] -> Either Text (GeomVec g)
+  toCommands   :: GeomVec g -> [Command]
 
 -- | A valid `RawFeature` of points must contain a single `MoveTo` command
 -- with a count greater than 0.
 instance ProtobufGeom G.Point where
-  fromCommands [ MoveTo ps ] = Right . V.convert $ expand (G.Point 0 0) ps
+  fromCommands [ MoveTo ps ] = Right $ expand (G.Point 0 0) ps
   fromCommands (c : _)       = Left . pack $ printf "Invalid command found in Point feature: %s" (show c)
   fromCommands []            = Left "No points given!"
 
   -- | A multipoint geometry must reduce to a single `MoveTo` command.
-  toCommands ps = [ MoveTo $ evalState (VS.mapM collapse $ V.convert ps) (G.Point 0 0) ]
+  toCommands ps = [ MoveTo $ evalState (VS.mapM collapse ps) (G.Point 0 0) ]
 
 -- | A valid `RawFeature` of linestrings must contain pairs of:
 --
@@ -298,7 +303,7 @@ uncommands = Seq.fromList >=> f
 feats :: Seq BL.ByteString -> Seq Value.Value -> Seq Feature.Feature -> Either Text Feats
 feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
 feats keys vals fs = foldlM g (Feats mempty mempty mempty) fs
-  where f :: ProtobufGeom g => Feature.Feature -> Either Text (VT.Feature g)
+  where f :: ProtobufGeom g => Feature.Feature -> Either Text (VT.Feature (GeomVec g))
         f x = VT.Feature
           <$> pure (maybe 0 fromIntegral $ Feature.id x)
           <*> getMeta keys vals (Feature.tags x)
@@ -309,9 +314,9 @@ feats keys vals fs = foldlM g (Feats mempty mempty mempty) fs
           Just GeomType.POLYGON    -> (\fe' -> feets { featPolys  = po <> VB.singleton fe' }) <$> f fe
           _ -> Left "Geometry type of UNKNOWN given."
 
-data Feats = Feats { featPoints :: !(VB.Builder (VT.Feature G.Point))
-                   , featLines  :: !(VB.Builder (VT.Feature G.LineString))
-                   , featPolys  :: !(VB.Builder (VT.Feature G.Polygon)) }
+data Feats = Feats { featPoints :: !(VB.Builder (VT.Feature (GeomVec G.Point)))
+                   , featLines  :: !(VB.Builder (VT.Feature (GeomVec G.LineString)))
+                   , featPolys  :: !(VB.Builder (VT.Feature (GeomVec G.Polygon))) }
 
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
@@ -320,9 +325,9 @@ getMeta keys vals tags = do
 
 {- TO PROTOBUF -}
 
-totalMeta :: V.Vector (VT.Feature G.Point)
-          -> V.Vector (VT.Feature G.LineString)
-          -> V.Vector (VT.Feature G.Polygon)
+totalMeta :: V.Vector (VT.Feature (GeomVec G.Point))
+          -> V.Vector (VT.Feature (GeomVec G.LineString))
+          -> V.Vector (VT.Feature (GeomVec G.Polygon))
           -> ([BL.ByteString], [VT.Val])
 totalMeta ps ls polys = (keys, vals)
   where keys = HS.toList $ f ps <> f ls <> f polys
@@ -335,7 +340,7 @@ unfeats :: ProtobufGeom g
         => M.HashMap BL.ByteString Int
         -> M.HashMap VT.Val Int
         -> GeomType.GeomType
-        -> VT.Feature g
+        -> VT.Feature (GeomVec g)
         -> Feature.Feature
 unfeats keys vals gt fe = Feature.Feature
                             { Feature.id       = Just . fromIntegral $ VT._featureId fe
