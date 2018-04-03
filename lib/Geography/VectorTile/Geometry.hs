@@ -22,8 +22,9 @@ module Geography.VectorTile.Geometry
 import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldl')
 import           Data.Semigroup
-import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
+import qualified Data.Vector.Storable as VS
+import           Foreign.Storable
 import           GHC.Generics (Generic)
 
 ---
@@ -40,11 +41,17 @@ instance Monoid Point where
   mempty = Point 0 0
   mappend = (<>)
 
+instance Storable Point where
+  sizeOf _ = 16
+  alignment _ = 8
+  peek p = Point <$> peekByteOff p 0 <*> peekByteOff p 8
+  poke p (Point a b) = pokeByteOff p 0 a *> pokeByteOff p 8 b
+
 instance NFData Point
 
 -- | /newtype/ compiles away to expose only the `U.Vector` of unboxed `Point`s
 -- at runtime.
-newtype LineString = LineString { lsPoints :: V.Vector Point } deriving (Eq,Show,Generic)
+newtype LineString = LineString { lsPoints :: VS.Vector Point } deriving (Eq, Show, Generic)
 
 instance NFData LineString
 
@@ -53,8 +60,8 @@ instance NFData LineString
 -- VectorTiles require that Polygon exteriors have clockwise winding order,
 -- and that interior holes have counter-clockwise winding order.
 -- These assume that the origin (0,0) is in the *top-left* corner.
-data Polygon = Polygon { polyPoints :: V.Vector Point
-                       , inner :: Seq.Seq Polygon } deriving (Eq,Show,Generic)
+data Polygon = Polygon { polyPoints :: VS.Vector Point
+                       , inner      :: V.Vector Polygon } deriving (Eq, Show, Generic)
 
 instance NFData Polygon
 
@@ -68,12 +75,12 @@ area p = surveyor (polyPoints p) + foldl' (\acc i -> acc + area i) 0 (inner p)
 -- considered an Interior Ring.
 --
 -- Assumption: The `V.Vector` given has at least 4 `Point`s.
-surveyor :: V.Vector Point -> Double
-surveyor v = (/ 2) . fromIntegral . V.foldl' (+) 0 $ V.zipWith3 (\xn yn yp -> xn * (yn - yp)) xs yns yps
-  where v' = V.init v
-        xs = V.map x v'
-        yns = V.map y . V.tail $ V.snoc v' (V.head v')
-        yps = V.map y . V.init $ V.cons (V.last v') v'
+surveyor :: VS.Vector Point -> Double
+surveyor v = (/ 2) . fromIntegral . VS.foldl' (+) 0 $ VS.zipWith3 (\xn yn yp -> xn * (yn - yp)) xs yns yps
+  where v' = VS.init v
+        xs = VS.map x v'
+        yns = VS.map y . VS.tail $ VS.snoc v' (VS.head v')
+        yps = VS.map y . VS.init $ VS.cons (VS.last v') v'
 
 -- | Euclidean distance.
 distance :: Point -> Point -> Double

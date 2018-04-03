@@ -39,6 +39,7 @@ dependencies:
   - bytestring
   - containers
   - hashable
+  - mtl
   - protocol-buffers >= 2.4 && < 2.5
   - protocol-buffers-descriptor >= 2.4 && < 2.5
   - text >=1.2 && <1.3

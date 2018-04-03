@@ -7,7 +7,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as M
 import           Data.Monoid ((<>))
-import qualified Data.Vector as V
+import qualified Data.Vector.Storable as VS
 import           Geography.VectorTile
 import           Lens.Micro
 import           Lens.Micro.Platform ()  -- Instances only.
@@ -71,9 +71,9 @@ fromRight :: Either a b -> b
 fromRight (Right b) = b
 fromRight _ = error "`Left` given to fromRight!"
 
-tinyvec :: V.Vector Point
-tinyvec = V.fromList [ Point 1 1, Point 2 1, Point 2 2, Point 1 2, Point 1 1 ]
+tinyvec :: VS.Vector Point
+tinyvec = VS.fromList [ Point 1 1, Point 2 1, Point 2 2, Point 1 2, Point 1 1 ]
 
-bigvec :: V.Vector Point
-bigvec = ps <> V.fromList [ Point 500 1000, Point 1 1 ]
-  where ps = V.fromList $ map (\n -> Point n 1) [ 1 .. 1000 ]
+bigvec :: VS.Vector Point
+bigvec = ps <> VS.fromList [ Point 500 1000, Point 1 1 ]
+  where ps = VS.fromList $ map (\n -> Point n 1) [ 1 .. 1000 ]
