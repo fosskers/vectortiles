@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE BangPatterns, ViewPatterns #-}
 
 -- |
 -- Module    : Geography.VectorTile.Internal
@@ -75,8 +74,6 @@ import           Geography.VectorTile.Util
 import qualified Geography.VectorTile.VectorTile as VT
 import           Text.Printf
 import           Text.ProtocolBuffers.Basic (defaultValue, Utf8(..), utf8)
-import qualified VectorBuilder.Builder as VB
-import qualified VectorBuilder.Vector as VB
 
 ---
 
@@ -109,12 +106,12 @@ instance Protobuffable VT.VectorTile where
 instance Protobuffable VT.Layer where
   fromProtobuf l = do
     Feats ps ls polys <- feats (utf8 <$> Layer.keys l) (Layer.values l) $ Layer.features l
-    pure VT.Layer { VT._version = fromIntegral $ Layer.version l
-                  , VT._name = utf8 $ Layer.name l
-                  , VT._points = ps
-                  , VT._linestrings = ls
-                  , VT._polygons = polys
-                  , VT._extent = maybe 4096 fromIntegral (Layer.extent l) }
+    pure VT.Layer { VT._version     = fromIntegral $ Layer.version l
+                  , VT._name        = utf8 $ Layer.name l
+                  , VT._points      = V.fromList $ toList ps
+                  , VT._linestrings = V.fromList $ toList ls
+                  , VT._polygons    = V.fromList $ toList polys
+                  , VT._extent      = maybe 4096 fromIntegral (Layer.extent l) }
 
   toProtobuf l = Layer.Layer { Layer.version   = fromIntegral $ VT._version l
                              , Layer.name      = Utf8 $ VT._name l
@@ -299,31 +296,22 @@ uncommands = Seq.fromList >=> f
 -- is not possible.
 feats :: Seq BL.ByteString -> Seq Value.Value -> Seq Feature.Feature -> Either Text Feats
 feats _ _ Seq.Empty = Left "VectorTile.features: `[RawFeature]` empty"
-feats keys vals (toList -> fs) = do
-  pnts <- V.fromList <$> h GeomType.POINT
-  lins <- V.fromList <$> h GeomType.LINESTRING
-  plys <- V.fromList <$> h GeomType.POLYGON
-  -- foldlM g (Feats mempty mempty mempty) fs
-  pure $ Feats pnts lins plys
+feats keys vals fs = foldlM g (Feats mempty mempty mempty) fs
   where f :: ProtobufGeom g => Feature.Feature -> Either Text (VT.Feature (GeomVec g))
         f x = VT.Feature
           <$> pure (maybe 0 fromIntegral $ Feature.id x)
           <*> getMeta keys vals (Feature.tags x)
           <*> (fromCommands . commands . toList $ Feature.geometry x)
 
-        -- g feets@(Feats ps ls po) fe = case Feature.type' fe of
-        --   Just GeomType.POINT      -> (\fe' -> feets { featPoints = ps <> VB.singleton fe' }) <$> f fe
-        --   Just GeomType.LINESTRING -> (\fe' -> feets { featLines  = ls <> VB.singleton fe' }) <$> f fe
-        --   Just GeomType.POLYGON    -> (\fe' -> feets { featPolys  = po <> VB.singleton fe' }) <$> f fe
-        --   _ -> Left "Geometry type of UNKNOWN given."
+        g feets@(Feats ps ls po) fe = case Feature.type' fe of
+          Just GeomType.POINT      -> (\fe' -> feets { featPoints = ps |> fe' }) <$> f fe
+          Just GeomType.LINESTRING -> (\fe' -> feets { featLines  = ls |> fe' }) <$> f fe
+          Just GeomType.POLYGON    -> (\fe' -> feets { featPolys  = po |> fe' }) <$> f fe
+          _ -> Left "Geometry type of UNKNOWN given."
 
-        h :: ProtobufGeom g => GeomType.GeomType -> Either Text [VT.Feature (GeomVec g)]
-        h gt = traverse f $ filter (\fe -> Feature.type' fe == Just gt) fs
-
-
-data Feats = Feats { featPoints :: !(V.Vector (VT.Feature (GeomVec G.Point)))
-                   , featLines  :: !(V.Vector (VT.Feature (GeomVec G.LineString)))
-                   , featPolys  :: !(V.Vector (VT.Feature (GeomVec G.Polygon))) }
+data Feats = Feats { featPoints :: !(Seq (VT.Feature (GeomVec G.Point)))
+                   , featLines  :: !(Seq (VT.Feature (GeomVec G.LineString)))
+                   , featPolys  :: !(Seq (VT.Feature (GeomVec G.Polygon))) }
 
 getMeta :: Seq BL.ByteString -> Seq Value.Value -> Seq Word32 -> Either Text (M.HashMap BL.ByteString VT.Val)
 getMeta keys vals tags = do
