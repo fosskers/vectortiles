@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings, BangPatterns #-}
-
 -- |
 -- Module    : Geography.VectorTile.Util
 -- Copyright : (c) Colin Woodbury 2016 - 2018
