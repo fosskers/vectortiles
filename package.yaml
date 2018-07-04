@@ -78,7 +78,7 @@ benchmarks:
       # - -prof
       # - -fprof-auto
     dependencies:
-      - criterion >=1.1 && <1.5
+      - criterion >=1.1 && <1.6
       - microlens >=0.4 && <0.5
       - microlens-platform >=0.3 && <0.4
       - vectortiles
