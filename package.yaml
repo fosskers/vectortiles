@@ -27,17 +27,17 @@ extra-source-files:
   - CHANGELOG.md
 
 ghc-options:
-  - -fwarn-unused-imports
-  - -fwarn-unused-binds
-  - -fwarn-name-shadowing
-  - -fwarn-unused-matches
-  - -fwarn-incomplete-patterns
+  - -Wall
+  - -Wincomplete-record-updates
   - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
+  - -Widentities
 
 dependencies:
   - base >=4.9 && <4.12
   - bytestring
   - containers
+  - dlist >= 0.8 && < 0.9
   - hashable
   - mtl
   - protocol-buffers >= 2.4 && < 2.5

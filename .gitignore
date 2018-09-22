@@ -3,3 +3,5 @@ pypyenv/*
 *.tar.gz
 dist/*
 *.prof
+*.graphml
+*.html
