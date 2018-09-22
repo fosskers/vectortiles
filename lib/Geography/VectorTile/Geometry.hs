@@ -60,8 +60,8 @@ instance NFData LineString
 -- VectorTiles require that Polygon exteriors have clockwise winding order,
 -- and that interior holes have counter-clockwise winding order.
 -- These assume that the origin (0,0) is in the *top-left* corner.
-data Polygon = Polygon { polyPoints :: VS.Vector Point
-                       , inner      :: V.Vector Polygon } deriving (Eq, Show, Generic)
+data Polygon = Polygon { polyPoints :: !(VS.Vector Point)
+                       , inner      :: !(V.Vector Polygon) } deriving (Eq, Show, Generic)
 
 instance NFData Polygon
 
