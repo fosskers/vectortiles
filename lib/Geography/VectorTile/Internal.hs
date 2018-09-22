@@ -21,7 +21,7 @@
 module Geography.VectorTile.Internal
   ( -- * Types
     -- ** Protobuf Conversion
-    Protobuf(..)
+    Protobuf
   , Protobuffable(..)
   , ProtobufGeom(..)
     -- ** Decoded Middle-Types

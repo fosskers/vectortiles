@@ -16,7 +16,6 @@ module Geography.VectorTile.Geometry
   -- ** Operations
   , area
   , surveyor
-  , distance
   ) where
 
 import           Control.DeepSeq (NFData)
@@ -49,7 +48,7 @@ instance Storable Point where
 
 instance NFData Point
 
--- | /newtype/ compiles away to expose only the `U.Vector` of unboxed `Point`s
+-- | /newtype/ compiles away to expose only the `VS.Vector` of unboxed `Point`s
 -- at runtime.
 newtype LineString = LineString { lsPoints :: VS.Vector Point } deriving (Eq, Show, Generic)
 
@@ -74,16 +73,10 @@ area p = surveyor (polyPoints p) + foldl' (\acc i -> acc + area i) 0 (inner p)
 -- If the value reported here is negative, then the `Polygon` should be
 -- considered an Interior Ring.
 --
--- Assumption: The `V.Vector` given has at least 4 `Point`s.
+-- Assumption: The `VS.Vector` given has at least 4 `Point`s.
 surveyor :: VS.Vector Point -> Double
 surveyor v = (/ 2) . fromIntegral . VS.foldl' (+) 0 $ VS.zipWith3 (\xn yn yp -> xn * (yn - yp)) xs yns yps
   where v' = VS.init v
         xs = VS.map x v'
         yns = VS.map y . VS.tail $ VS.snoc v' (VS.head v')
         yps = VS.map y . VS.init $ VS.cons (VS.last v') v'
-
--- | Euclidean distance.
-distance :: Point -> Point -> Double
-distance p1 p2 = sqrt . fromIntegral $ dx ^ 2 + dy ^ 2
-  where dx = x p1 - x p2
-        dy = y p1 - y p2

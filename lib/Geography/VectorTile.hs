@@ -52,7 +52,6 @@ module Geography.VectorTile
   , Polygon(..)
   , area
   , surveyor
-  , distance
   ) where
 
 import           Control.Monad ((>=>))
