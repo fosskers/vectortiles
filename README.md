@@ -8,7 +8,7 @@ VectorTiles
 
 What are VectorTiles?
 ---------------------
-Invented by [Mapbox](https://www.mapbox.com/), `vectortiles` are a combination
+Invented by [Mapbox](https://www.mapbox.com/), VectorTiles are a combination
 of finite-sized tiles and vector geometries. Mapbox maintains the
 official implementation spec for VectorTile codecs.
 
@@ -208,8 +208,8 @@ issue](https://github.com/mapbox/vector-tile-spec/issues/80) reports another
 #### Sanity Checks / Error Handling
 
 The protobuf data can be malformed in a number of ways. The amount of sanity
-checks while decoding depends on willingness to sacrifice performance.
-For instance, here is a constraint found in the spec
+checking that occurs while decoding depends on willingness to sacrifice 
+performance. For instance, here is a constraint found in the spec
 regarding feature metadata:
 
 > Every key index MUST be unique within that feature such that no other
