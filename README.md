@@ -8,8 +8,8 @@ VectorTiles
 
 What are VectorTiles?
 ---------------------
-Invented by [Mapbox](https://www.mapbox.com/), they are a combination of the
-ideas of finite-sized tiles and vector geometries. Mapbox maintains the
+Invented by [Mapbox](https://www.mapbox.com/), VectorTiles are a combination
+of finite-sized tiles and vector geometries. Mapbox maintains the
 official implementation spec for VectorTile codecs.
 
 VectorTiles are advantageous over raster tiles in that:
@@ -26,10 +26,10 @@ schema](https://github.com/mapbox/vector-tile-spec/blob/master/2.1/vector_tile.p
 What is this library?
 ---------------------
 `vectortiles` is a minimum viable implementation of **Version 2.1** of the
-VectorTile spec. It aims to be a solid reference from which to implement
-other codecs. It exposes a small API of conversion functions between raw
+VectorTile spec. It aims to be a solid reference to implement
+other codecs. `vectortiles` exposes a small API of conversion functions between raw
 protobuf data and a higher-level `VectorTile` type that is more condusive to
-further processing. It also exposes fairly simplistic (yet sensible)
+further processing. `vectortiles` also exposes fairly simplistic (yet sensible)
 implementations of the typical GIS `Geometry` types:
 
 * Point
@@ -70,11 +70,12 @@ newtype LineString = LineString { lsPoints :: U.Vector Point }
 
 #### Performance
 
-You can run the benchmarks with `stack bench`, provided you have [the stack
-tool](http://docs.haskellstack.org/en/stable/README/). The following results
-are from a 2016 Lenovo ThinkPad Carbon X1 with an Intel Core i7 processor,
-comparing this library with a [Python library of similar
-functionality](https://github.com/mapzen/mapbox-vector-tile). All
+Benchmarks can be run with `stack bench`, provided [the stack
+tool](http://docs.haskellstack.org/en/stable/README/) is installed. The 
+following results are from a 2016 Lenovo ThinkPad Carbon X1 with an 
+Intel Core i7 processor, comparing this library with a 
+[Python library of similar functionality]
+(https://github.com/mapzen/mapbox-vector-tile). All
 benchmarking code is available in the `bench` directory.
 
 *Note: 1 ms = 1000 μs*
@@ -159,7 +160,7 @@ The protobuf spec leaves room for additional:
 * fields in a `Tile`
 * use of the `UNKNOWN` geometry type
 
-In writing a codec, you are completely free to ignore these. However, they
+In writing a codec, these can be completely ignored. However, they
 are permitted by the spec, and some tools may encode data using them.
 
 #### Feature/Geometry Polymorphism
@@ -206,9 +207,9 @@ issue](https://github.com/mapbox/vector-tile-spec/issues/80) reports another
 
 #### Sanity Checks / Error Handling
 
-The protobuf data can be malformed in a number of ways. How much sanity
-checking you wish to do while decoding depends on how much performance you
-can sacrifice. For instance, here is a constraint found in the spec
+The protobuf data can be malformed in a number of ways. The amount of sanity
+checking that occurs while decoding depends on willingness to sacrifice 
+performance. For instance, here is a constraint found in the spec
 regarding feature metadata:
 
 > Every key index MUST be unique within that feature such that no other
@@ -219,13 +220,13 @@ regarding feature metadata:
 
 Tips
 ----
-> Decode what you encode, and encode what you decode.
+> Decode what is encoded, and encode what is decoded.
 
-Your encoding and decoding functions should be as close to isomorphisms as possible.
+Encoding and decoding functions should be as close to isomorphisms as possible.
 
 > (0,0) is in the top-left corner.
 
-> Know your binary arithmetic.
+> Know binary arithmetic well.
 
 Lists of Geometry commands/values are Z-encoded. See the `zig` and `unzig`
 functions in `Geometry.VectorTile.Geometry`.
