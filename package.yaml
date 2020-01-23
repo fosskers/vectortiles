@@ -34,7 +34,7 @@ ghc-options:
   - -Widentities
 
 dependencies:
-  - base >=4.9 && <4.12
+  - base >=4.9 && < 5
   - bytestring
   - containers
   - dlist >= 0.8 && < 0.9

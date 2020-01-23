@@ -5,3 +5,4 @@ dist/*
 *.prof
 *.graphml
 *.html
+.stack-work/*
