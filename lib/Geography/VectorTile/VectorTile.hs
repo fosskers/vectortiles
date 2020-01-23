@@ -1,11 +1,12 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE Rank2Types     #-}
 
 -- |
 -- Module    : Geography.VectorTile.VectorTile
--- Copyright : (c) Colin Woodbury 2016 - 2018
+-- Copyright : (c) Colin Woodbury 2016 - 2020
 -- License   : BSD3
--- Maintainer: Colin Woodbury <colingw@gmail.com>
+-- Maintainer: Colin Woodbury <colin@fosskers.ca>
 --
 -- High-level types for representing Vector Tiles.
 
@@ -37,14 +38,14 @@ module Geography.VectorTile.VectorTile
 
 import           Control.DeepSeq (NFData)
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.HashMap.Lazy as M
 import           Data.Hashable (Hashable)
+import qualified Data.HashMap.Lazy as M
 import           Data.Int
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import           Data.Word
-import           GHC.Generics (Generic)
 import           Geography.VectorTile.Geometry
+import           GHC.Generics (Generic)
 
 ---
 

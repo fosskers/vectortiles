@@ -1,8 +1,8 @@
 -- |
 -- Module    : Geography.VectorTile
--- Copyright : (c) Colin Woodbury 2016 - 2018
+-- Copyright : (c) Colin Woodbury 2016 - 2020
 -- License   : BSD3
--- Maintainer: Colin Woodbury <colingw@gmail.com>
+-- Maintainer: Colin Woodbury <colin@fosskers.ca>
 --
 -- GIS Vector Tiles, as defined by Mapbox.
 --
@@ -59,9 +59,9 @@ import           Data.Bifunctor (bimap)
 import qualified Data.ByteString as BS
 import           Data.ByteString.Lazy (fromStrict, toStrict)
 import           Data.Text (Text, pack)
+import           Geography.VectorTile.Geometry
 import           Geography.VectorTile.Internal (fromProtobuf, toProtobuf)
 import           Geography.VectorTile.VectorTile
-import           Geography.VectorTile.Geometry
 import           Text.ProtocolBuffers.WireMessage (messageGet, messagePut)
 
 ---

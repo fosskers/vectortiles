@@ -1,6 +1,6 @@
 cabal-version:      2.2
 name:               vectortiles
-version:            1.4.1
+version:            1.5.0
 synopsis:           GIS Vector Tiles, as defined by Mapbox.
 description:
   GIS Vector Tiles, as defined by Mapbox.

@@ -1,11 +1,11 @@
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module    : Geography.VectorTile.Geometry
--- Copyright : (c) Colin Woodbury 2016 - 2018
+-- Copyright : (c) Colin Woodbury 2016 - 2020
 -- License   : BSD3
--- Maintainer: Colin Woodbury <colingw@gmail.com>
+-- Maintainer: Colin Woodbury <colin@fosskers.ca>
 
 module Geography.VectorTile.Geometry
   ( -- * Geometries

@@ -1,13 +1,13 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DuplicateRecordFields  #-}
+{-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 
 -- |
 -- Module    : Geography.VectorTile.Internal
--- Copyright : (c) Colin Woodbury 2016 - 2018
+-- Copyright : (c) Colin Woodbury 2016 - 2020
 -- License   : BSD3
--- Maintainer: Colin Woodbury <colingw@gmail.com>
+-- Maintainer: Colin Woodbury <colin@fosskers.ca>
 --
 -- Raw Vector Tile data is stored as binary protobuf data.
 -- This module reads and writes raw protobuf ByteStrings between a data type
@@ -58,7 +58,7 @@ import           Data.Int
 import           Data.List (unfoldr)
 import           Data.Maybe (fromJust)
 import           Data.Semigroup hiding (diff)
-import           Data.Sequence (Seq, (<|), (|>), Seq())
+import           Data.Sequence (Seq, (<|), (|>))
 import qualified Data.Sequence as Seq
 import           Data.Text (Text, pack)
 import qualified Data.Vector as V
@@ -73,7 +73,7 @@ import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Value a
 import           Geography.VectorTile.Util
 import qualified Geography.VectorTile.VectorTile as VT
 import           Text.Printf
-import           Text.ProtocolBuffers.Basic (defaultValue, Utf8(..), utf8)
+import           Text.ProtocolBuffers.Basic (Utf8(..), defaultValue, utf8)
 
 ---
 

@@ -1,8 +1,8 @@
 -- |
 -- Module    : Geography.VectorTile.Util
--- Copyright : (c) Colin Woodbury 2016 - 2018
+-- Copyright : (c) Colin Woodbury 2016 - 2020
 -- License   : BSD3
--- Maintainer: Colin Woodbury <colingw@gmail.com>
+-- Maintainer: Colin Woodbury <colin@fosskers.ca>
 
 module Geography.VectorTile.Util where
 
@@ -26,8 +26,8 @@ data Pair = Pair !Int !Int
 
 pairsWith :: (a -> Int) -> [a] -> VS.Vector Point
 pairsWith f = VS.unfoldr g
-  where g []  = Nothing
-        g [_] = Nothing
+  where g []       = Nothing
+        g [_]      = Nothing
         g (a:b:cs) = Just (Point (f a) (f b), cs)
 
 -- | Flatten a list of pairs. Equivalent to:
