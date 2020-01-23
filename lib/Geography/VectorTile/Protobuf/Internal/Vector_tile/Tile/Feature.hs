@@ -1,7 +1,7 @@
-{-# LANGUAGE BangPatterns, DeriveDataTypeable, DeriveGeneric, FlexibleInstances, MultiParamTypeClasses #-}
-{-# OPTIONS_GHC  -fno-warn-unused-imports #-}
+{-# LANGUAGE BangPatterns, DeriveDataTypeable, DeriveGeneric, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings #-}
+{-# OPTIONS_GHC  -w #-}
 module Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.Feature (Feature(..)) where
-import Prelude ((+), (/))
+import Prelude ((+), (/), (++), (.))
 import qualified Prelude as Prelude'
 import qualified Data.Typeable as Prelude'
 import qualified GHC.Generics as Prelude'
@@ -11,7 +11,7 @@ import qualified Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.GeomTyp
 
 data Feature = Feature{id :: !(P'.Maybe P'.Word64), tags :: !(P'.Seq P'.Word32), type' :: !(P'.Maybe Vector_tile.Tile.GeomType),
                        geometry :: !(P'.Seq P'.Word32)}
-             deriving (Prelude'.Show, Prelude'.Eq, Prelude'.Ord, Prelude'.Typeable, Prelude'.Data, Prelude'.Generic)
+               deriving (Prelude'.Show, Prelude'.Eq, Prelude'.Ord, Prelude'.Typeable, Prelude'.Data, Prelude'.Generic)
 
 instance P'.Mergeable Feature where
   mergeAppend (Feature x'1 x'2 x'3 x'4) (Feature y'1 y'2 y'3 y'4)
@@ -28,24 +28,27 @@ instance P'.Wire Feature where
        _ -> P'.wireSizeErr ft' self'
     where
         calc'Size = (P'.wireSizeOpt 1 4 x'1 + P'.wireSizePacked 1 13 x'2 + P'.wireSizeOpt 1 14 x'3 + P'.wireSizePacked 1 13 x'4)
-  wirePut ft' self'@(Feature x'1 x'2 x'3 x'4)
+  wirePutWithSize ft' self'@(Feature x'1 x'2 x'3 x'4)
    = case ft' of
        10 -> put'Fields
-       11 -> do
-               P'.putSize (P'.wireSize 10 self')
-               put'Fields
+       11 -> put'FieldsSized
        _ -> P'.wirePutErr ft' self'
     where
         put'Fields
-         = do
-             P'.wirePutOpt 8 4 x'1
-             P'.wirePutPacked 18 13 x'2
-             P'.wirePutOpt 24 14 x'3
-             P'.wirePutPacked 34 13 x'4
+         = P'.sequencePutWithSize
+            [P'.wirePutOptWithSize 8 4 x'1, P'.wirePutPackedWithSize 18 13 x'2, P'.wirePutOptWithSize 24 14 x'3,
+             P'.wirePutPackedWithSize 34 13 x'4]
+        put'FieldsSized
+         = let size' = Prelude'.fst (P'.runPutM put'Fields)
+               put'Size
+                = do
+                    P'.putSize size'
+                    Prelude'.return (P'.size'WireSize size')
+            in P'.sequencePutWithSize [put'Size, put'Fields]
   wireGet ft'
    = case ft' of
-       10 -> P'.getBareMessageWith update'Self
-       11 -> P'.getMessageWith update'Self
+       10 -> P'.getBareMessageWith (P'.catch'Unknown' P'.discardUnknown update'Self)
+       11 -> P'.getMessageWith (P'.catch'Unknown' P'.discardUnknown update'Self)
        _ -> P'.wireGetErr ft'
     where
         update'Self wire'Tag old'Self
@@ -68,7 +71,7 @@ instance P'.ReflectDescriptor Feature where
   getMessageInfo _ = P'.GetMessageInfo (P'.fromDistinctAscList []) (P'.fromDistinctAscList [8, 16, 18, 24, 32, 34])
   reflectDescriptorInfo _
    = Prelude'.read
-      "DescriptorInfo {descName = ProtoName {protobufName = FIName \".vector_tile.Tile.Feature\", haskellPrefix = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule = [MName \"Vector_tile\",MName \"Tile\"], baseName = MName \"Feature\"}, descFilePath = [\"Geography\",\"VectorTile\",\"Protobuf\",\"Internal\",\"Vector_tile\",\"Tile\",\"Feature.hs\"], isGroup = False, fields = fromList [FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.id\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"id\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 1}, wireTag = WireTag {getWireTag = 8}, packedTag = Nothing, wireTagLength = 1, isPacked = False, isRequired = False, canRepeat = False, mightPack = False, typeCode = FieldType {getFieldType = 4}, typeName = Nothing, hsRawDefault = Just \"0\", hsDefault = Just (HsDef'Integer 0)},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.tags\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"tags\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 2}, wireTag = WireTag {getWireTag = 18}, packedTag = Just (WireTag {getWireTag = 16},WireTag {getWireTag = 18}), wireTagLength = 1, isPacked = True, isRequired = False, canRepeat = True, mightPack = True, typeCode = FieldType {getFieldType = 13}, typeName = Nothing, hsRawDefault = Nothing, hsDefault = Nothing},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.type\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"type'\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 3}, wireTag = WireTag {getWireTag = 24}, packedTag = Nothing, wireTagLength = 1, isPacked = False, isRequired = False, canRepeat = False, mightPack = False, typeCode = FieldType {getFieldType = 14}, typeName = Just (ProtoName {protobufName = FIName \".vector_tile.Tile.GeomType\", haskellPrefix = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule = [MName \"Vector_tile\",MName \"Tile\"], baseName = MName \"GeomType\"}), hsRawDefault = Just \"UNKNOWN\", hsDefault = Just (HsDef'Enum \"UNKNOWN\")},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.geometry\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"geometry\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 4}, wireTag = WireTag {getWireTag = 34}, packedTag = Just (WireTag {getWireTag = 32},WireTag {getWireTag = 34}), wireTagLength = 1, isPacked = True, isRequired = False, canRepeat = True, mightPack = True, typeCode = FieldType {getFieldType = 13}, typeName = Nothing, hsRawDefault = Nothing, hsDefault = Nothing}], descOneofs = fromList [], keys = fromList [], extRanges = [], knownKeys = fromList [], storeUnknown = False, lazyFields = False, makeLenses = False}"
+      "DescriptorInfo {descName = ProtoName {protobufName = FIName \".vector_tile.Tile.Feature\", haskellPrefix = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule = [MName \"Vector_tile\",MName \"Tile\"], baseName = MName \"Feature\"}, descFilePath = [\"Geography\",\"VectorTile\",\"Protobuf\",\"Internal\",\"Vector_tile\",\"Tile\",\"Feature.hs\"], isGroup = False, fields = fromList [FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.id\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"id\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 1}, wireTag = WireTag {getWireTag = 8}, packedTag = Nothing, wireTagLength = 1, isPacked = False, isRequired = False, canRepeat = False, mightPack = False, typeCode = FieldType {getFieldType = 4}, typeName = Nothing, hsRawDefault = Just \"0\", hsDefault = Just (HsDef'Integer 0)},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.tags\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"tags\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 2}, wireTag = WireTag {getWireTag = 18}, packedTag = Just (WireTag {getWireTag = 16},WireTag {getWireTag = 18}), wireTagLength = 1, isPacked = True, isRequired = False, canRepeat = True, mightPack = True, typeCode = FieldType {getFieldType = 13}, typeName = Nothing, hsRawDefault = Nothing, hsDefault = Nothing},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.type\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"type'\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 3}, wireTag = WireTag {getWireTag = 24}, packedTag = Nothing, wireTagLength = 1, isPacked = False, isRequired = False, canRepeat = False, mightPack = False, typeCode = FieldType {getFieldType = 14}, typeName = Just (ProtoName {protobufName = FIName \".vector_tile.Tile.GeomType\", haskellPrefix = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule = [MName \"Vector_tile\",MName \"Tile\"], baseName = MName \"GeomType\"}), hsRawDefault = Just \"UNKNOWN\", hsDefault = Just (HsDef'Enum \"UNKNOWN\")},FieldInfo {fieldName = ProtoFName {protobufName' = FIName \".vector_tile.Tile.Feature.geometry\", haskellPrefix' = [MName \"Geography\",MName \"VectorTile\",MName \"Protobuf\",MName \"Internal\"], parentModule' = [MName \"Vector_tile\",MName \"Tile\",MName \"Feature\"], baseName' = FName \"geometry\", baseNamePrefix' = \"\"}, fieldNumber = FieldId {getFieldId = 4}, wireTag = WireTag {getWireTag = 34}, packedTag = Just (WireTag {getWireTag = 32},WireTag {getWireTag = 34}), wireTagLength = 1, isPacked = True, isRequired = False, canRepeat = True, mightPack = True, typeCode = FieldType {getFieldType = 13}, typeName = Nothing, hsRawDefault = Nothing, hsDefault = Nothing}], descOneofs = fromList [], keys = fromList [], extRanges = [], knownKeys = fromList [], storeUnknown = False, lazyFields = False, makeLenses = False, jsonInstances = False}"
 
 instance P'.TextType Feature where
   tellT = P'.tellSubMessage

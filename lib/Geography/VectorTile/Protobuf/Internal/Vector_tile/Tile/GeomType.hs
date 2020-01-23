@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns, DeriveDataTypeable, DeriveGeneric, FlexibleInstances, MultiParamTypeClasses #-}
-{-# OPTIONS_GHC  -fno-warn-unused-imports #-}
+{-# LANGUAGE BangPatterns, DeriveDataTypeable, DeriveGeneric, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings #-}
+{-# OPTIONS_GHC  -w #-}
 module Geography.VectorTile.Protobuf.Internal.Vector_tile.Tile.GeomType (GeomType(..)) where
 import Prelude ((+), (/), (.))
 import qualified Prelude as Prelude'
@@ -12,7 +12,8 @@ data GeomType = UNKNOWN
               | POINT
               | LINESTRING
               | POLYGON
-              deriving (Prelude'.Read, Prelude'.Show, Prelude'.Eq, Prelude'.Ord, Prelude'.Typeable, Prelude'.Data, Prelude'.Generic)
+                deriving (Prelude'.Read, Prelude'.Show, Prelude'.Eq, Prelude'.Ord, Prelude'.Typeable, Prelude'.Data,
+                          Prelude'.Generic)
 
 instance P'.Mergeable GeomType
 
@@ -72,6 +73,7 @@ instance P'.ReflectEnum GeomType where
         "GeomType")
       ["Geography", "VectorTile", "Protobuf", "Internal", "Vector_tile", "Tile", "GeomType.hs"]
       [(0, "UNKNOWN"), (1, "POINT"), (2, "LINESTRING"), (3, "POLYGON")]
+      Prelude'.False
 
 instance P'.TextType GeomType where
   tellT = P'.tellShow
