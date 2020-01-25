@@ -6,11 +6,10 @@ import           Criterion.Main
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as M
-import           Data.Monoid ((<>))
 import qualified Data.Vector.Storable as VS
 import           Geography.VectorTile
 import           Lens.Micro
-import           Lens.Micro.Platform ()  -- Instances only.
+import           Lens.Micro.Platform ()
 
 ---
 
@@ -69,7 +68,7 @@ firstPoly ln mvt = tile mvt ^? _Right . layers . ix ln . polygons . _head . geom
 
 fromRight :: Either a b -> b
 fromRight (Right b) = b
-fromRight _ = error "`Left` given to fromRight!"
+fromRight _         = error "`Left` given to fromRight!"
 
 tinyvec :: VS.Vector Point
 tinyvec = VS.fromList [ Point 1 1, Point 2 1, Point 2 2, Point 1 2, Point 1 1 ]

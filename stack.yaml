@@ -1,3 +1,7 @@
 resolver: lts-14.21
 
 ghc-options: {"$locals": -ddump-to-file -ddump-hi}
+
+extra-deps:
+  - protocol-buffers-2.4.13
+  - protocol-buffers-descriptor-2.4.13

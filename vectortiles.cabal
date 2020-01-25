@@ -1,6 +1,6 @@
 cabal-version:      2.2
 name:               vectortiles
-version:            1.5.0
+version:            1.5.1
 synopsis:           GIS Vector Tiles, as defined by Mapbox.
 description:
   GIS Vector Tiles, as defined by Mapbox.
@@ -89,6 +89,6 @@ benchmark vectortiles-bench
   build-depends:
     , criterion             >=1.1 && <1.6
     , microlens             ^>=0.4
-    , microlens-platform    ^>=0.3
+    , microlens-platform    >=0.3 && < 0.5
     , unordered-containers
     , vectortiles

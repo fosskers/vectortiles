@@ -20,7 +20,6 @@ module Geography.VectorTile.Geometry
 
 import           Control.DeepSeq (NFData)
 import           Data.Foldable (foldl')
-import           Data.Semigroup
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import           Foreign.Storable

@@ -1,6 +1,9 @@
 Changelog
 =========
 
+## 1.5.1
+- GHC 8.8.2 support.
+
 ## 1.5.0
 - **Breaking:** Removed the `distance` function.
 - Regenerated schema code to match modern versions of `protocol-buffers`.

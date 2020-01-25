@@ -46,7 +46,6 @@ module Geography.VectorTile.Internal
   ) where
 
 import           Control.Applicative ((<|>))
-import           Control.Monad (void, (>=>))
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
 import           Data.Bits
@@ -57,7 +56,6 @@ import qualified Data.HashSet as HS
 import           Data.Int
 import           Data.List (unfoldr)
 import           Data.Maybe (fromJust)
-import           Data.Semigroup hiding (diff)
 import           Data.Sequence (Seq, (<|), (|>))
 import qualified Data.Sequence as Seq
 import           Data.Text (Text, pack)
